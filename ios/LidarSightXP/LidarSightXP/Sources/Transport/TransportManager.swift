@@ -189,7 +189,14 @@ class TransportManager: ObservableObject {
         params.allowLocalEndpointReuse = true
         
         let connection = NWConnection(to: endpoint, using: params)
-        connection.send(content: data, completion: .contentProcessed { _ in })
+        connection.stateUpdateHandler = { state in
+            if state == .ready {
+                connection.send(content: data, completion: .contentProcessed { _ in
+                    connection.cancel()
+                })
+            }
+        }
+        connection.start(queue: .global(qos: .userInitiated))
     }
     
     private func sendOverPeerTalk(_ data: Data) {

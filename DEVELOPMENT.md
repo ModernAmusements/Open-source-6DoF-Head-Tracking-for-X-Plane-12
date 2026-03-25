@@ -7,12 +7,14 @@ LidarSight XP is a 6DoF head-tracking system for X-Plane 12 that uses an iPhone 
 ## Architecture
 
 ```
-┌─────────────┐     USB/WiFi     ┌─────────────┐    Datarefs    ┌─────────────┐
-│  iPhone     │◄────────────────►│   MacBook   │◄──────────────►│  X-Plane 12 │
-│  (Face      │    PeerTalk/UDP  │  (Plugin)   │  acf_peX/Y/Z   │             │
-│  Tracking)  │                  │  C++/SDK4   │                │             │
+┌─────────────┐     WiFi UDP      ┌─────────────┐    Datarefs    ┌─────────────┐
+│  iPhone     │◄────────────────►│   Mac       │◄──────────────►│  X-Plane 12 │
+│  (Face      │  255.255.255.255 │  (Plugin)   │  acf_peX/Y/Z   │             │
+│  Tracking)  │    port 4242      │  C++/SDK4   │                │             │
 └─────────────┘                  └─────────────┘                └─────────────┘
 ```
+
+**Current Status:** WiFi UDP only. USB (PeerTalk) transport deferred.
 
 ## Development Setup
 

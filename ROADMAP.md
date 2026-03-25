@@ -19,11 +19,11 @@ A professional-grade, open-source 6DoF head-tracking system for X-Plane 12 using
 ## Architecture
 
 ```
-┌─────────────┐     USB      ┌─────────────┐    Datarefs    ┌─────────────┐
-│  iPhone     │◄────────────►│   MacBook   │◄──────────────►│  X-Plane 12 │
-│  (Face      │   PeerTalk   │  (Plugin)   │  acf_peX/Y/Z   │             │
-│  Tracking)  │              │  C++/SDK4   │                │             │
-└─────────────┘              └─────────────┘                └─────────────┘
+┌─────────────┐     WiFi UDP     ┌─────────────┐    Datarefs    ┌─────────────┐
+│  iPhone     │◄────────────────►│   Mac       │◄──────────────►│  X-Plane 12 │
+│  (Face      │   255.255.255.255│  (Plugin)   │  acf_peX/Y/Z   │             │
+│  Tracking)  │   port 4242      │  C++/SDK4   │                │             │
+└─────────────┘                  └─────────────┘                └─────────────┘
 ```
 
 ---
@@ -52,12 +52,11 @@ A professional-grade, open-source 6DoF head-tracking system for X-Plane 12 using
                          ┌──────────────────────────────────────┴────────────┐ │
                          │                   TRANSPORT LAYER                 │ │
                          │                                                       │ │
-                         │  ┌─────────────────┐      ┌─────────────────────┐  │ │
-                         │  │   PeerTalk      │      │      UDP            │  │ │
-                         │  │   (USB)         │      │   (WiFi fallback)   │  │ │
-                         │  │   ~5ms          │      │   ~10-30ms          │  │ │
-                         │  │   Reliable      │      │   Unreliable        │  │ │
-                         │  └────────┬────────┘      └──────────┬──────────┘  │ │
+                         │  ┌─────────────────┐                               │ │
+                         │  │   UDP            │      (WiFi only)                │ │
+                         │  │   Broadcast     │      ~30-50ms                   │ │
+                         │  │   port 4242     │                                 │ │
+                         │  └────────┬────────┘                                 │ │
                          │           │                         │              │ │
                          │           └───────────┬─────────────┘              │ │
                          │                       │                           │ │
@@ -289,35 +288,34 @@ Size: 33 bytes
 
 ## Implementation Phases
 
-### PHASE 1: iOS App (Swift/SwiftUI)
+### PHASE 1: iOS App (Swift/SwiftUI) ✅ DONE
 
-- [ ] ARFaceTrackingConfiguration setup
-- [ ] ARFaceAnchor extraction (transform + blend shapes)
-- [ ] Face transform → 6DoF head pose conversion
-- [ ] One-tap calibration (store center offset)
-- [ ] PeerTalk USB transport
-- [ ] WiFi UDP fallback
-- [ ] Liquid Glass UI (SwiftUI `.ultraThinMaterial`)
-- [ ] Sensitivity settings
-- [ ] Stealth mode (auto-dim)
+- [x] ARFaceTrackingConfiguration setup
+- [x] ARFaceAnchor extraction (transform + blend shapes)
+- [x] Face transform → 6DoF head pose conversion
+- [x] One-tap calibration (store center offset)
+- [ ] PeerTalk USB transport (deferred)
+- [x] WiFi UDP broadcast (port 4242)
+- [x] Liquid Glass UI (SwiftUI `.ultraThinMaterial`)
+- [x] Sensitivity settings
+- [x] Stealth mode (auto-dim)
 
-### PHASE 2: macOS Plugin (C++/SDK 4.0)
+### PHASE 2: macOS Plugin (C++/SDK 4.0) ✅ DONE
 
-- [ ] PeerTalk client (USB connection handling)
-- [ ] Background receive thread
-- [ ] One Euro Filter implementation
-- [ ] Triple-buffer atomic pose swap
-- [ ] Dataref writer (sim/aircraft/view/acf_pe*)
-- [ ] View detection (only activate in cockpit)
-- [ ] Universal Binary 2 (Intel + Apple Silicon)
-- [ ] Custom command registration (LidarSight/Recenter)
+- [ ] PeerTalk client (deferred)
+- [x] Background receive thread
+- [x] One Euro Filter implementation
+- [x] Triple-buffer atomic pose swap
+- [x] Dataref writer (sim/aircraft/view/acf_pe*)
+- [x] View detection (only activate in cockpit 1017)
+- [x] Buildable on Intel + Apple Silicon
 
-### PHASE 3: Calibration & Polish
+### PHASE 3: Calibration & Polish ✅ DONE
 
-- [ ] Auto-detect center on app start
-- [ ] Manual recenter button/command
-- [ ] Joystick binding support
-- [ ] Thermal throttling
+- [x] Auto-detect center on app start
+- [x] Manual recenter button
+- [ ] Joystick binding support (not available in SDK 4.0)
+- [x] Thermal throttling
 
 ---
 
