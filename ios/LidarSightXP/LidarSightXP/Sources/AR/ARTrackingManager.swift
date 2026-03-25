@@ -3,8 +3,8 @@ import ARKit
 import Combine
 
 @MainActor
-class ARTrackingManager: ObservableObject {
-    @Published var currentPose: HeadPose = .zero
+class ARTrackingManager: NSObject, ObservableObject {
+    @Published var currentPose: HeadPose = HeadPose()
     @Published var isTracking: Bool = false
     @Published var isFaceDetected: Bool = false
     @Published var trackingState: ARCamera.TrackingState = .notAvailable
@@ -14,10 +14,22 @@ class ARTrackingManager: ObservableObject {
     private var configuration: ARFaceTrackingConfiguration?
     private var packetId: UInt32 = 0
     
+    private var transportManager: TransportManager?
+    private var calibrationManager: CalibrationManager?
+    
     var onPoseUpdate: ((HeadPose) -> Void)?
     
-    init() {
+    override init() {
+        super.init()
         setupThermalMonitoring()
+    }
+    
+    func setTransportManager(_ manager: TransportManager) {
+        self.transportManager = manager
+    }
+    
+    func setCalibrationManager(_ manager: CalibrationManager) {
+        self.calibrationManager = manager
     }
     
     private func setupThermalMonitoring() {
@@ -26,8 +38,10 @@ class ARTrackingManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.thermalState = ProcessInfo.processInfo.thermalState
-            self?.handleThermalChange()
+            Task { @MainActor in
+                self?.thermalState = ProcessInfo.processInfo.thermalState
+                self?.handleThermalChange()
+            }
         }
     }
     
@@ -37,7 +51,9 @@ class ARTrackingManager: ObservableObject {
         if thermalState == .critical || thermalState == .serious {
             config.frameSemantics = []
         } else {
-            config.frameSemantics = [.faceLandmarks]
+            if ARFaceTrackingConfiguration.supportsFrameSemantics(.faceLandmarks) {
+                config.frameSemantics = [.faceLandmarks]
+            }
         }
         
         session?.run(config)
@@ -59,12 +75,7 @@ class ARTrackingManager: ObservableObject {
         
         configuration = config
         session = ARSession()
-        session?.delegate = FaceTrackingDelegate.shared
-        FaceTrackingDelegate.shared.onFrameUpdate = { [weak self] anchor in
-            Task { @MainActor in
-                self?.processFaceAnchor(anchor)
-            }
-        }
+        session?.delegate = self
         session?.run(config)
         
         isTracking = true
@@ -81,9 +92,7 @@ class ARTrackingManager: ObservableObject {
         isFaceDetected = anchor.isTracked
         
         guard anchor.isTracked else {
-            var invalidPose = currentPose
-            invalidPose.isValid = false
-            currentPose = invalidPose
+            currentPose = HeadPose(isValid: false)
             return
         }
         
@@ -97,22 +106,27 @@ class ARTrackingManager: ObservableObject {
         
         let rotation = extractEulerAngles(from: transform)
         
-        let pose = HeadPose(
+        var pose = HeadPose(
             position: position,
             rotation: rotation,
             timestamp: CACurrentMediaTime(),
             isValid: true
         )
         
+        if let calibration = calibrationManager {
+            pose = calibration.applyCalibration(to: pose)
+        }
+        
         currentPose = pose
         packetId += 1
         
         onPoseUpdate?(pose)
+        
+        transportManager?.sendPose(pose)
     }
     
     private func extractEulerAngles(from transform: simd_float4x4) -> SIMD3<Float> {
         let quaternion = simd_quatf(transform)
-        let eulerAngles = quaternion.act(SIMD3<Float>(1, 0, 0))
         
         let pitch = atan2(2 * (quaternion.real * quaternion.imag.x + quaternion.imag.y * quaternion.imag.z),
                           1 - 2 * (quaternion.imag.x * quaternion.imag.x + quaternion.imag.y * quaternion.imag.y))
@@ -128,29 +142,20 @@ class ARTrackingManager: ObservableObject {
     }
 }
 
-class FaceTrackingDelegate: NSObject, ARSessionDelegate {
-    static let shared = FaceTrackingDelegate()
-    
-    var onFrameUpdate: ((ARFaceAnchor) -> Void)?
-    
-    func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+extension ARTrackingManager: ARSessionDelegate {
+    nonisolated func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
         for anchor in anchors {
             if let faceAnchor = anchor as? ARFaceAnchor {
-                onFrameUpdate?(faceAnchor)
+                Task { @MainActor in
+                    self.processFaceAnchor(faceAnchor)
+                }
             }
         }
     }
     
-    func session(_ session: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
+    nonisolated func session(_ session: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
         Task { @MainActor in
-            NotificationCenter.default.post(
-                name: .trackingStateChanged,
-                object: camera.trackingState
-            )
+            self.trackingState = camera.trackingState
         }
     }
-}
-
-extension Notification.Name {
-    static let trackingStateChanged = Notification.Name("trackingStateChanged")
 }

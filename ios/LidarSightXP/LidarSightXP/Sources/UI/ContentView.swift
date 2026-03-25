@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject var trackingManager: ARTrackingManager
@@ -6,6 +7,12 @@ struct ContentView: View {
     @EnvironmentObject var calibrationManager: CalibrationManager
     
     @State private var showSettings = false
+    @State private var opacity: Double = 1.0
+    @State private var steadyFrames = 0
+    @State private var lastPoseChange = Date()
+    
+    let steadyThreshold = 60
+    let dimDelay: Double = 10.0
     
     var body: some View {
         ZStack {
@@ -43,12 +50,49 @@ struct ContentView: View {
                     }
                 )
             }
+            .opacity(opacity)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
+                .environmentObject(transportManager)
         }
         .onAppear {
             transportManager.loadCalibration()
+            startStealthMonitor()
+        }
+        .onChange(of: trackingManager.currentPose) { _ in
+            checkForStealthMode()
+        }
+    }
+    
+    private func startStealthMonitor() {
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            if transportManager.settings.stealthMode {
+                let timeSinceChange = Date().timeIntervalSince(lastPoseChange)
+                if timeSinceChange > dimDelay && steadyFrames > steadyThreshold {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        opacity = 0.3
+                    }
+                }
+            }
+        }
+    }
+    
+    private func checkForStealthMode() {
+        let currentPos = trackingManager.currentPose.position
+        let lastPos = calibrationManager.calibrationOffset.position
+        let threshold: Float = 0.01
+        
+        if abs(currentPos.x - lastPos.x) < threshold &&
+           abs(currentPos.y - lastPos.y) < threshold &&
+           abs(currentPos.z - lastPos.z) < threshold {
+            steadyFrames += 1
+        } else {
+            steadyFrames = 0
+            lastPoseChange = Date()
+            withAnimation(.easeInOut(duration: 0.3)) {
+                opacity = 1.0
+            }
         }
     }
 }
@@ -135,9 +179,11 @@ struct TrackingOverlayView: View {
 
 struct StartButtonView: View {
     @EnvironmentObject var trackingManager: ARTrackingManager
+    @EnvironmentObject var transportManager: TransportManager
     
     var body: some View {
         Button(action: {
+            transportManager.startUDPServer()
             trackingManager.startTracking()
         }) {
             VStack(spacing: 8) {
@@ -244,7 +290,17 @@ struct SettingsView: View {
                     }
                 }
             }
+            .onAppear {
+                loadSettings()
+            }
         }
+    }
+    
+    private func loadSettings() {
+        sensitivity = Double(transportManager.settings.sensitivity)
+        smoothing = Double(transportManager.settings.smoothing)
+        useUSB = transportManager.settings.useUSB
+        stealthMode = transportManager.settings.stealthMode
     }
     
     private func saveSettings() {

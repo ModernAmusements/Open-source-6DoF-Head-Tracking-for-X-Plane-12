@@ -1,9 +1,10 @@
 import Foundation
 import Combine
+import simd
 
 @MainActor
 class CalibrationManager: ObservableObject {
-    @Published var calibrationOffset: CalibrationOffset = .zero
+    @Published var calibrationOffset: CalibrationOffset = CalibrationOffset()
     @Published var isCalibrated: Bool = false
     
     init() {
@@ -15,12 +16,12 @@ class CalibrationManager: ObservableObject {
             position: pose.position,
             rotation: pose.rotation
         )
-        isCalibrated = true
+        isCalibrated = calibrationOffset != CalibrationOffset()
         saveCalibration()
     }
     
     func resetCalibration() {
-        calibrationOffset = .zero
+        calibrationOffset = CalibrationOffset()
         isCalibrated = false
         saveCalibration()
     }
@@ -42,7 +43,7 @@ class CalibrationManager: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: "calibrationOffset"),
            let saved = try? JSONDecoder().decode(CalibrationOffset.self, from: data) {
             calibrationOffset = saved
-            isCalibrated = saved != .zero
+            isCalibrated = saved != CalibrationOffset()
         }
     }
 }

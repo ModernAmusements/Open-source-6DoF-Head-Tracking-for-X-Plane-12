@@ -7,8 +7,8 @@ struct HeadPose: Equatable {
     var timestamp: TimeInterval
     var isValid: Bool
     
-    init(position: SIMD3<Float> = .zero, 
-         rotation: SIMD3<Float> = .zero, 
+    init(position: SIMD3<Float> = SIMD3<Float>(0, 0, 0), 
+         rotation: SIMD3<Float> = SIMD3<Float>(0, 0, 0), 
          timestamp: TimeInterval = 0,
          isValid: Bool = false) {
         self.position = position
@@ -20,18 +20,34 @@ struct HeadPose: Equatable {
     static let zero = HeadPose()
 }
 
-struct CalibrationOffset: Codable {
+struct CalibrationOffset: Codable, Equatable {
     var position: SIMD3<Float>
     var rotation: SIMD3<Float>
     
-    static let zero = CalibrationOffset(position: .zero, rotation: .zero)
+    init(position: SIMD3<Float> = SIMD3<Float>(0, 0, 0), 
+         rotation: SIMD3<Float> = SIMD3<Float>(0, 0, 0)) {
+        self.position = position
+        self.rotation = rotation
+    }
+    
+    static let zero = CalibrationOffset()
 }
 
-struct TrackingSettings: Codable {
-    var sensitivity: Float = 1.0
-    var smoothing: Float = 0.6
-    var useUSB: Bool = true
-    var stealthMode: Bool = true
+struct TrackingSettings: Codable, Equatable {
+    var sensitivity: Float
+    var smoothing: Float
+    var useUSB: Bool
+    var stealthMode: Bool
+    
+    init(sensitivity: Float = 1.0, 
+         smoothing: Float = 0.6, 
+         useUSB: Bool = true, 
+         stealthMode: Bool = true) {
+        self.sensitivity = sensitivity
+        self.smoothing = smoothing
+        self.useUSB = useUSB
+        self.stealthMode = stealthMode
+    }
     
     static let `default` = TrackingSettings()
 }

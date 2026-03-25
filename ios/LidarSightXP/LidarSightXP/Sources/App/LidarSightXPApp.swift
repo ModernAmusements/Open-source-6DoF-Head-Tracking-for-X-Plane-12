@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 @main
 struct LidarSightXPApp: App {
@@ -12,6 +13,10 @@ struct LidarSightXPApp: App {
                 .environmentObject(trackingManager)
                 .environmentObject(transportManager)
                 .environmentObject(calibrationManager)
+                .onAppear {
+                    trackingManager.setTransportManager(transportManager)
+                    trackingManager.setCalibrationManager(calibrationManager)
+                }
         }
     }
 }
