@@ -66,12 +66,15 @@ struct ContentView: View {
     }
     
     private func startStealthMonitor() {
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            if transportManager.settings.stealthMode {
-                let timeSinceChange = Date().timeIntervalSince(lastPoseChange)
-                if timeSinceChange > dimDelay && steadyFrames > steadyThreshold {
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        opacity = 0.3
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
+            Task { @MainActor in
+                let settings = transportManager.settings
+                if settings.stealthMode {
+                    let timeSinceChange = Date().timeIntervalSince(lastPoseChange)
+                    if timeSinceChange > dimDelay && steadyFrames > steadyThreshold {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            opacity = 0.3
+                        }
                     }
                 }
             }
@@ -245,7 +248,6 @@ struct SettingsView: View {
     
     @State private var sensitivity: Double = 1.0
     @State private var smoothing: Double = 0.6
-    @State private var useUSB: Bool = true
     @State private var stealthMode: Bool = true
     
     var body: some View {
@@ -261,7 +263,6 @@ struct SettingsView: View {
                 }
                 
                 Section("Connection") {
-                    Toggle("Use USB (PeerTalk)", isOn: $useUSB)
                     Toggle("Stealth Mode", isOn: $stealthMode)
                 }
                 
@@ -299,7 +300,6 @@ struct SettingsView: View {
     private func loadSettings() {
         sensitivity = Double(transportManager.settings.sensitivity)
         smoothing = Double(transportManager.settings.smoothing)
-        useUSB = transportManager.settings.useUSB
         stealthMode = transportManager.settings.stealthMode
     }
     
@@ -307,7 +307,6 @@ struct SettingsView: View {
         let settings = TrackingSettings(
             sensitivity: Float(sensitivity),
             smoothing: Float(smoothing),
-            useUSB: useUSB,
             stealthMode: stealthMode
         )
         transportManager.updateSettings(settings)

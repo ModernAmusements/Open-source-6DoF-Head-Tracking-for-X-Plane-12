@@ -50,10 +50,6 @@ class ARTrackingManager: NSObject, ObservableObject {
         
         if thermalState == .critical || thermalState == .serious {
             config.frameSemantics = []
-        } else {
-            if ARFaceTrackingConfiguration.supportsFrameSemantics(.faceLandmarks) {
-                config.frameSemantics = [.faceLandmarks]
-            }
         }
         
         session?.run(config)
@@ -68,10 +64,6 @@ class ARTrackingManager: NSObject, ObservableObject {
         let config = ARFaceTrackingConfiguration()
         config.isLightEstimationEnabled = true
         config.maximumNumberOfTrackedFaces = 1
-        
-        if ARFaceTrackingConfiguration.supportsFrameSemantics(.faceLandmarks) {
-            config.frameSemantics = [.faceLandmarks]
-        }
         
         configuration = config
         session = ARSession()

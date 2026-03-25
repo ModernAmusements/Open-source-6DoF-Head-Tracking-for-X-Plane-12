@@ -3,7 +3,7 @@ import Foundation
 struct HeadPosePacket {
     var packetId: UInt32 = 0
     var flags: UInt8 = 0
-    var timestampUs: Double = 0
+    var timestampUs: Float = 0
     var x: Float = 0
     var y: Float = 0
     var z: Float = 0
@@ -11,7 +11,7 @@ struct HeadPosePacket {
     var yaw: Float = 0
     var roll: Float = 0
     
-    static let size = 24
+    static let size = 33
     
     enum Flag: UInt8 {
         case calibrated = 0x01

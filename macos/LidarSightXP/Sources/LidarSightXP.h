@@ -10,15 +10,17 @@
 #include <mutex>
 #include "Processing/OneEuroFilter.h"
 
-#define PACKET_SIZE 24
+#pragma pack(push, 1)
+#define PACKET_SIZE 33
 
 struct HeadPosePacket {
     uint32_t packet_id;
     uint8_t  flags;
-    double   timestamp_us;
+    float    timestamp_us;
     float    x, y, z;
     float    pitch, yaw, roll;
 };
+#pragma pack(pop)
 
 class LidarSightXP {
 public:

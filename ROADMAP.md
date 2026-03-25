@@ -276,14 +276,14 @@ This approach:
 struct HeadPosePacket {
     uint32_t packet_id;       // Sequence ID for interpolation
     uint8_t  flags;          // Calibrated, tracking status bits
-    double   timestamp_us;   // Microseconds for latency monitoring
+    float    timestamp_us;   // Microseconds for latency monitoring
     float    x, y, z;       // Position (meters, relative to calibration)
     float    pitch, yaw, roll; // Rotation (degrees)
 };
 #pragma pack(pop)
 ```
 
-Size: 24 bytes
+Size: 33 bytes
 
 ---
 

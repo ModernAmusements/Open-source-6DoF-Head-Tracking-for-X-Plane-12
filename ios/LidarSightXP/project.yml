@@ -2,7 +2,7 @@ name: LidarSightXP
 options:
   bundleIdPrefix: com.lidarsight
   deploymentTarget:
-    iOS: "14.0"
+    iOS: "15.0"
   xcodeVersion: "15.0"
 
 settings:

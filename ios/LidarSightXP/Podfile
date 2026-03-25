@@ -1,14 +1,15 @@
-platform :ios, '14.0'
+platform :ios, '15.0'
 use_frameworks!
 
 target 'LidarSightXP' do
-  pod 'PeerTalk', :git => 'https://github.com/rsms/peertalk.git'
+  # USB transport disabled - using UDP only for now
+  # pod 'PeerTalk', :git => 'https://github.com/rsms/peertalk.git'
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
     end
   end
 end

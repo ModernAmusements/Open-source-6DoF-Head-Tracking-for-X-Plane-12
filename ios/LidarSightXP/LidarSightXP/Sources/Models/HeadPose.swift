@@ -36,16 +36,13 @@ struct CalibrationOffset: Codable, Equatable {
 struct TrackingSettings: Codable, Equatable {
     var sensitivity: Float
     var smoothing: Float
-    var useUSB: Bool
     var stealthMode: Bool
     
     init(sensitivity: Float = 1.0, 
          smoothing: Float = 0.6, 
-         useUSB: Bool = true, 
          stealthMode: Bool = true) {
         self.sensitivity = sensitivity
         self.smoothing = smoothing
-        self.useUSB = useUSB
         self.stealthMode = stealthMode
     }
     

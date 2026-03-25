@@ -9,12 +9,10 @@ class TransportManager: ObservableObject {
     @Published var localIP: String = "0.0.0.0"
     @Published var udpPort: UInt16 = 4242
     
-    private var udpConnection: NWConnection?
     private var listener: NWListener?
-    
     private var packetId: UInt32 = 0
-    private var calibrationOffset: CalibrationOffset = CalibrationOffset()
-    private var settings: TrackingSettings = TrackingSettings()
+    var calibrationOffset: CalibrationOffset = CalibrationOffset()
+    var settings: TrackingSettings = TrackingSettings()
     
     enum ConnectionStatus: Equatable {
         case disconnected
@@ -74,20 +72,18 @@ class TransportManager: ObservableObject {
         saveCalibration()
     }
     
-    private func saveCalibration() {
+    func saveCalibration() {
         if let data = try? JSONEncoder().encode(calibrationOffset) {
             UserDefaults.standard.set(data, forKey: "calibrationOffset")
         }
     }
     
-    private func loadCalibration() {
+    func loadCalibration() {
         if let data = UserDefaults.standard.data(forKey: "calibrationOffset"),
            let saved = try? JSONDecoder().decode(CalibrationOffset.self, from: data) {
             calibrationOffset = saved
         }
     }
-    
-    // MARK: - UDP Transport
     
     func startUDPServer() {
         do {
@@ -112,12 +108,6 @@ class TransportManager: ObservableObject {
                 }
             }
             
-            listener?.newConnectionHandler = { [weak self] connection in
-                Task { @MainActor in
-                    self?.handleNewConnection(connection)
-                }
-            }
-            
             listener?.start(queue: .global(qos: .userInitiated))
             connectionStatus = .connecting
             
@@ -129,36 +119,7 @@ class TransportManager: ObservableObject {
     func stopUDPServer() {
         listener?.cancel()
         listener = nil
-        
-        udpConnection?.cancel()
-        udpConnection = nil
-        
         connectionStatus = .disconnected
-    }
-    
-    private func handleNewConnection(_ connection: NWConnection) {
-        connection.stateUpdateHandler = { state in
-            switch state {
-            case .ready:
-                self.receiveData(from: connection)
-            case .failed, .cancelled:
-                break
-            default:
-                break
-            }
-        }
-        connection.start(queue: .global(qos: .userInitiated))
-    }
-    
-    private func receiveData(from connection: NWConnection) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65535) { [weak self] data, _, isComplete, error in
-            if let _ = data {
-                // Handle commands from Mac plugin (recenter, etc.)
-            }
-            if !isComplete && error == nil {
-                self?.receiveData(from: connection)
-            }
-        }
     }
     
     private func updateLocalIP() {
@@ -190,8 +151,6 @@ class TransportManager: ObservableObject {
         localIP = address
     }
     
-    // MARK: - Send Pose
-    
     func sendPose(_ pose: HeadPose) {
         guard connectionStatus == .connected || isUSBConnected else { return }
         
@@ -199,7 +158,7 @@ class TransportManager: ObservableObject {
         
         var packet = HeadPosePacket()
         packet.packetId = packetId
-        packet.timestampUs = pose.timestamp * 1_000_000
+        packet.timestampUs = Float(pose.timestamp * 1_000_000)
         packet.x = (pose.position.x - calibrationOffset.position.x) * settings.sensitivity
         packet.y = (pose.position.y - calibrationOffset.position.y) * settings.sensitivity
         packet.z = (pose.position.z - calibrationOffset.position.z) * settings.sensitivity
@@ -221,24 +180,20 @@ class TransportManager: ObservableObject {
     }
     
     private func broadcastPacket(_ data: Data) {
-        guard localIP != "0.0.0.0" else { return }
-        
         let endpoint = NWEndpoint.hostPort(
-            host: NWEndpoint.Host(localIP),
+            host: NWEndpoint.Host("255.255.255.255"),
             port: NWEndpoint.Port(rawValue: udpPort)!
         )
         
-        let connection = NWConnection(to: endpoint, using: .udp)
-        connection.send(content: data, completion: .contentProcessed { error in
-            if let error = error {
-                print("UDP send error: \(error)")
-            }
-        })
+        let params = NWParameters.udp
+        params.allowLocalEndpointReuse = true
+        
+        let connection = NWConnection(to: endpoint, using: params)
+        connection.send(content: data, completion: .contentProcessed { _ in })
     }
     
     private func sendOverPeerTalk(_ data: Data) {
-        // PeerTalk implementation - will be called when USB is connected
-        // Requires PeerTalk framework integration via CocoaPods
+        // PeerTalk implementation
     }
     
     func connectToUSB() {
