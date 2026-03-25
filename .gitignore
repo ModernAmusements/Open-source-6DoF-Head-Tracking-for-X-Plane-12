@@ -1,10 +1,13 @@
 # Xcode
 .DS_Store
 build/
-*.xcodeproj/
-*.xcworkspace/
-xcuserdata/
-*.xcuserstate
+*.xcodeproj
+*.xcworkspace
+xcuserdata
+
+# Specific Xcode project files
+**/project.pbxproj
+**/UserInterfaceState.xcuserstate
 
 # macOS plugin
 *.xpl/
