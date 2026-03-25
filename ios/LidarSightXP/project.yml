@@ -1,0 +1,41 @@
+name: LidarSightXP
+options:
+  bundleIdPrefix: com.lidarsight
+  deploymentTarget:
+    iOS: "14.0"
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  LidarSightXP:
+    type: application
+    platform: iOS
+    sources:
+      - path: LidarSightXP
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lidarsight.xp
+        INFOPLIST_FILE: LidarSightXP/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: ""
+        ENABLE_BITCODE: NO
+    info:
+      path: LidarSightXP/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: LidarSight XP
+        UILaunchScreen:
+          UIColorName: ""
+        NSCameraUsageDescription: "LidarSight XP needs camera access to track your face for head tracking in X-Plane."
+        UIRequiredDeviceCapabilities:
+          - armv7
+          - arkit
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait

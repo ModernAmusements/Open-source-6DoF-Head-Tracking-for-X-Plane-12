@@ -197,15 +197,27 @@ struct HeadPosePacket {
 ### Prerequisites
 
 - **Xcode 15+** (for iOS app)
+- **XcodeGen** (`brew install xcodegen`)
+- **CocoaPods** (`sudo gem install cocoapods`)
 - **CMake 3.20+** (for macOS plugin)
 - **X-Plane SDK 4.0** (download from developer.x-plane.com)
 
 ### iOS App
 
 ```bash
+# Generate Xcode project
 cd ios/LidarSightXP
-open LidarSightXP.xcodeproj
+xcodegen generate
+
+# Install dependencies (PeerTalk for USB)
+pod install
+
+# Open workspace (not project!)
+open LidarSightXP.xcworkspace
+
 # Build in Xcode (Cmd+B)
+# Or from command line:
+xcodebuild -workspace LidarSightXP.xcworkspace -scheme LidarSightXP -configuration Debug -destination 'generic platform=iOS' build
 ```
 
 ### macOS Plugin
@@ -218,6 +230,11 @@ make
 ```
 
 The built plugin will be in `build/LidarSightXP.xpl`
+
+Copy to X-Plane plugins folder:
+```bash
+cp build/LidarSightXP.xpl ~/Library/Application\ Support/X-Plane\ 12/Plugins/LidarSightXP.xpl/
+```
 
 ---
 

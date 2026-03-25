@@ -1,0 +1,380 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0F85F2CE75AECF90C6E58844 /* ARTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90761BC8303D84BE474E087 /* ARTrackingManager.swift */; };
+		3BE831BAC313DBA508930261 /* TransportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCA2822733B2351C1A703A7B /* TransportManager.swift */; };
+		4FFEA210F9334CFCA3621592 /* ARSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F94C82E4672C0D143E3C97F /* ARSceneView.swift */; };
+		7118601F5C5F40CA07BA6460 /* HeadPosePacket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93AEBF4BC08F3D2468A45049 /* HeadPosePacket.swift */; };
+		A9FC368EED011BE744F5CF85 /* CalibrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4AC05F190A28987FE0450D /* CalibrationManager.swift */; };
+		ADD891087C3FE2A97676CCC5 /* HeadPose.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7395361601C73BEDF5DB5E4 /* HeadPose.swift */; };
+		AF69D0A1A23DB0B4F35C44EA /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A79CE9A947E85E6695958DC /* ContentView.swift */; };
+		D1C9A033A23E4215581DA7C1 /* LidarSightXPApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD9CAAB288FC46691C555D7 /* LidarSightXPApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0F94C82E4672C0D143E3C97F /* ARSceneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARSceneView.swift; sourceTree = "<group>"; };
+		2A79CE9A947E85E6695958DC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3A4AC05F190A28987FE0450D /* CalibrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationManager.swift; sourceTree = "<group>"; };
+		4FD9CAAB288FC46691C555D7 /* LidarSightXPApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LidarSightXPApp.swift; sourceTree = "<group>"; };
+		87C9ABF8126FAC0C78C791AB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		93AEBF4BC08F3D2468A45049 /* HeadPosePacket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadPosePacket.swift; sourceTree = "<group>"; };
+		C5A08418EF61324861601BFF /* LidarSightXP.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LidarSightXP.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C7395361601C73BEDF5DB5E4 /* HeadPose.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadPose.swift; sourceTree = "<group>"; };
+		F90761BC8303D84BE474E087 /* ARTrackingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARTrackingManager.swift; sourceTree = "<group>"; };
+		FCA2822733B2351C1A703A7B /* TransportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransportManager.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		20890BD1663B44AA4E455B69 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				3A4AC05F190A28987FE0450D /* CalibrationManager.swift */,
+				C7395361601C73BEDF5DB5E4 /* HeadPose.swift */,
+				93AEBF4BC08F3D2468A45049 /* HeadPosePacket.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		2DFF6224C28067218E36756F /* AR */ = {
+			isa = PBXGroup;
+			children = (
+				F90761BC8303D84BE474E087 /* ARTrackingManager.swift */,
+			);
+			path = AR;
+			sourceTree = "<group>";
+		};
+		3051502121788C8F3AB4B4AC /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				87C9ABF8126FAC0C78C791AB /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		4AD4604F97457831AE459CC1 /* Transport */ = {
+			isa = PBXGroup;
+			children = (
+				FCA2822733B2351C1A703A7B /* TransportManager.swift */,
+			);
+			path = Transport;
+			sourceTree = "<group>";
+		};
+		558BEDE0243DE3787FFFC18B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C5A08418EF61324861601BFF /* LidarSightXP.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		65D896BBC3C72B4D1C65ED5A /* LidarSightXP */ = {
+			isa = PBXGroup;
+			children = (
+				3051502121788C8F3AB4B4AC /* Resources */,
+				AFF5B059EECAD07D9E185856 /* Sources */,
+			);
+			path = LidarSightXP;
+			sourceTree = "<group>";
+		};
+		9FE1610330A686CFEB5CBCD0 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				4FD9CAAB288FC46691C555D7 /* LidarSightXPApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		AFF5B059EECAD07D9E185856 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				9FE1610330A686CFEB5CBCD0 /* App */,
+				2DFF6224C28067218E36756F /* AR */,
+				20890BD1663B44AA4E455B69 /* Models */,
+				4AD4604F97457831AE459CC1 /* Transport */,
+				D54F428D38FF5261FAF0CD6F /* UI */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		D54F428D38FF5261FAF0CD6F /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				0F94C82E4672C0D143E3C97F /* ARSceneView.swift */,
+				2A79CE9A947E85E6695958DC /* ContentView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		E4E2F85CD028AA9C06A84515 = {
+			isa = PBXGroup;
+			children = (
+				65D896BBC3C72B4D1C65ED5A /* LidarSightXP */,
+				558BEDE0243DE3787FFFC18B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		6DA6F5ADC57D2AA03F1F91E0 /* LidarSightXP */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B2B18D9FA0EAA198BEB8DA3E /* Build configuration list for PBXNativeTarget "LidarSightXP" */;
+			buildPhases = (
+				CB4258379C2546AB57BF505A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LidarSightXP;
+			packageProductDependencies = (
+			);
+			productName = LidarSightXP;
+			productReference = C5A08418EF61324861601BFF /* LidarSightXP.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D1257A30DCD5609DD773EE80 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					6DA6F5ADC57D2AA03F1F91E0 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 8F86E9826E6E9A791546077F /* Build configuration list for PBXProject "LidarSightXP" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = E4E2F85CD028AA9C06A84515;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 558BEDE0243DE3787FFFC18B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				6DA6F5ADC57D2AA03F1F91E0 /* LidarSightXP */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CB4258379C2546AB57BF505A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4FFEA210F9334CFCA3621592 /* ARSceneView.swift in Sources */,
+				0F85F2CE75AECF90C6E58844 /* ARTrackingManager.swift in Sources */,
+				A9FC368EED011BE744F5CF85 /* CalibrationManager.swift in Sources */,
+				AF69D0A1A23DB0B4F35C44EA /* ContentView.swift in Sources */,
+				ADD891087C3FE2A97676CCC5 /* HeadPose.swift in Sources */,
+				7118601F5C5F40CA07BA6460 /* HeadPosePacket.swift in Sources */,
+				D1C9A033A23E4215581DA7C1 /* LidarSightXPApp.swift in Sources */,
+				3BE831BAC313DBA508930261 /* TransportManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1E3B0AF7C0B3CBD2435D2FD2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		7E2A87B7EDDC3EC561F0A015 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				INFOPLIST_FILE = LidarSightXP/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lidarsight.xp;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8FDBC51A5E915543E7367858 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				INFOPLIST_FILE = LidarSightXP/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lidarsight.xp;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		DBAE0B5624B70C1C8521D67E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8F86E9826E6E9A791546077F /* Build configuration list for PBXProject "LidarSightXP" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1E3B0AF7C0B3CBD2435D2FD2 /* Debug */,
+				DBAE0B5624B70C1C8521D67E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B2B18D9FA0EAA198BEB8DA3E /* Build configuration list for PBXNativeTarget "LidarSightXP" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7E2A87B7EDDC3EC561F0A015 /* Debug */,
+				8FDBC51A5E915543E7367858 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D1257A30DCD5609DD773EE80 /* Project object */;
+}
