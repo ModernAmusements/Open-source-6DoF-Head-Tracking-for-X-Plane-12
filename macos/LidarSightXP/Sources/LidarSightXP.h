@@ -8,6 +8,7 @@
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include "Processing/OneEuroFilter.h"
 
 #define PACKET_SIZE 24
 
@@ -38,6 +39,10 @@ private:
     void startNetwork();
     void stopNetwork();
     
+    void checkViewType();
+    void applyOneEuroFilter();
+    void recenter();
+    
     static void recenterCommandHandler(XPLMCommandRef inCommand, 
                                        XPLMCommandPhase inPhase, 
                                        void* inRefcon);
@@ -55,8 +60,16 @@ private:
     std::thread mNetworkThread;
     std::mutex mPoseMutex;
     
-    HeadPosePacket mCurrentPose;
+    static constexpr int BUFFER_COUNT = 3;
+    HeadPosePacket mPoseBuffers[BUFFER_COUNT];
+    std::atomic<int> mWriteBuffer;
+    std::atomic<int> mReadBuffer;
     HeadPosePacket mFilteredPose;
+    
+    OneEuroFilterVector3 mPositionFilter;
+    OneEuroFilterVector3 mRotationFilter;
+    
+    double mLastFrameTime;
     
     bool mIsEnabled;
     bool mInCockpitView;

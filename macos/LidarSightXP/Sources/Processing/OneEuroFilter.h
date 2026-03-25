@@ -42,12 +42,14 @@ public:
             return value;
         }
         
-        double filtered = alpha(mMinCutoff + mBeta * std::abs(mPrevDerivative)) * value +
-                         (1.0 - alpha(mMinCutoff + mBeta * std::abs(mPrevDerivative))) * mPrevFiltered;
+        double e = mMinCutoff + mBeta * std::abs(mPrevDerivative);
+        
+        double filtered = alpha(e, dt) * value +
+                         (1.0 - alpha(e, dt)) * mPrevFiltered;
         
         double derivative = (filtered - mPrevFiltered) / dt;
-        double filteredDerivative = alpha(mDCutoff) * derivative +
-                                    (1.0 - alpha(mDCutoff)) * mPrevDerivative;
+        double filteredDerivative = alpha(mDCutoff, dt) * derivative +
+                                    (1.0 - alpha(mDCutoff, dt)) * mPrevDerivative;
         
         mPrevValue = value;
         mPrevFiltered = filtered;
@@ -57,14 +59,14 @@ public:
     }
     
 private:
-    double alpha(double cutoff) {
-        return 1.0 / (1.0 + cutoff * dt);
+    double alpha(double cutoff, double deltaTime) {
+        double tau = 1.0 / (2.0 * M_PI * cutoff);
+        return 1.0 / (1.0 + tau / deltaTime);
     }
     
     double mMinCutoff;
     double mBeta;
     double mDCutoff;
-    double dt;
     
     bool mFirstTime;
     double mPrevValue;
