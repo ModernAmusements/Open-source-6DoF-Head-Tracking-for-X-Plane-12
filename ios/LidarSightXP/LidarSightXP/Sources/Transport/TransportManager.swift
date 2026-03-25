@@ -10,6 +10,7 @@ class TransportManager: ObservableObject {
     @Published var udpPort: UInt16 = 4242
     
     private var listener: NWListener?
+    private var broadcastConnection: NWConnection?
     private var packetId: UInt32 = 0
     var calibrationOffset: CalibrationOffset = CalibrationOffset()
     var settings: TrackingSettings = TrackingSettings()
@@ -98,6 +99,7 @@ class TransportManager: ObservableObject {
                     case .ready:
                         self?.connectionStatus = .connected
                         self?.updateLocalIP()
+                        self?.setupBroadcastConnection()
                     case .failed(let error):
                         self?.connectionStatus = .error(error.localizedDescription)
                     case .cancelled:
@@ -119,6 +121,8 @@ class TransportManager: ObservableObject {
     func stopUDPServer() {
         listener?.cancel()
         listener = nil
+        broadcastConnection?.cancel()
+        broadcastConnection = nil
         connectionStatus = .disconnected
     }
     
@@ -179,7 +183,7 @@ class TransportManager: ObservableObject {
         }
     }
     
-    private func broadcastPacket(_ data: Data) {
+    private func setupBroadcastConnection() {
         let endpoint = NWEndpoint.hostPort(
             host: NWEndpoint.Host("255.255.255.255"),
             port: NWEndpoint.Port(rawValue: udpPort)!
@@ -188,15 +192,42 @@ class TransportManager: ObservableObject {
         let params = NWParameters.udp
         params.allowLocalEndpointReuse = true
         
-        let connection = NWConnection(to: endpoint, using: params)
-        connection.stateUpdateHandler = { state in
-            if state == .ready {
-                connection.send(content: data, completion: .contentProcessed { _ in
-                    connection.cancel()
-                })
+        broadcastConnection = NWConnection(to: endpoint, using: params)
+        
+        broadcastConnection?.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .ready:
+                break
+            case .failed(let error):
+                print("Broadcast connection failed: \(error)")
+                DispatchQueue.main.async {
+                    self?.setupBroadcastConnection()
+                }
+            case .cancelled:
+                break
+            default:
+                break
             }
         }
-        connection.start(queue: .global(qos: .userInitiated))
+        
+        broadcastConnection?.start(queue: .global(qos: .userInitiated))
+    }
+    
+    private func broadcastPacket(_ data: Data) {
+        guard let connection = broadcastConnection else {
+            setupBroadcastConnection()
+            return
+        }
+        
+        guard connection.state == .ready else {
+            return
+        }
+        
+        connection.send(content: data, completion: .contentProcessed { error in
+            if let error = error {
+                print("Broadcast send error: \(error)")
+            }
+        })
     }
     
     private func sendOverPeerTalk(_ data: Data) {

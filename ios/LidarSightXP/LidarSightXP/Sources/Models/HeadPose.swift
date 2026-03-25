@@ -1,6 +1,29 @@
 import Foundation
 import simd
 
+enum TrackingMode: String, Codable, CaseIterable {
+    case faceTracking = "Face Tracking"
+    case lidar = "LiDAR"
+    
+    var description: String {
+        switch self {
+        case .faceTracking:
+            return "Uses front camera to track your face"
+        case .lidar:
+            return "Uses rear camera for position tracking"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .faceTracking:
+            return "person.fill"
+        case .lidar:
+            return "light.min"
+        }
+    }
+}
+
 struct HeadPose: Equatable {
     var position: SIMD3<Float>
     var rotation: SIMD3<Float> // pitch, yaw, roll in degrees
@@ -37,13 +60,16 @@ struct TrackingSettings: Codable, Equatable {
     var sensitivity: Float
     var smoothing: Float
     var stealthMode: Bool
+    var trackingMode: TrackingMode
     
     init(sensitivity: Float = 1.0, 
          smoothing: Float = 0.6, 
-         stealthMode: Bool = true) {
+         stealthMode: Bool = true,
+         trackingMode: TrackingMode = .faceTracking) {
         self.sensitivity = sensitivity
         self.smoothing = smoothing
         self.stealthMode = stealthMode
+        self.trackingMode = trackingMode
     }
     
     static let `default` = TrackingSettings()

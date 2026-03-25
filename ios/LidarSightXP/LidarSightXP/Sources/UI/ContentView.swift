@@ -187,13 +187,17 @@ struct StartButtonView: View {
     var body: some View {
         Button(action: {
             transportManager.startUDPServer()
+            trackingManager.trackingMode = transportManager.settings.trackingMode
             trackingManager.startTracking()
         }) {
             VStack(spacing: 8) {
-                Image(systemName: "face.dashed")
+                Image(systemName: trackingManager.trackingMode == .lidar ? "light.min" : "face.dashed")
                     .font(.system(size: 40))
                 Text("Start Tracking")
                     .font(.headline)
+                Text(trackingManager.trackingMode == .lidar ? "LiDAR Mode" : "Face Tracking")
+                    .font(.caption)
+                    .opacity(0.7)
             }
             .foregroundColor(.white)
             .padding(32)
@@ -244,21 +248,63 @@ struct GlassButton: View {
 
 struct SettingsView: View {
     @EnvironmentObject var transportManager: TransportManager
+    @EnvironmentObject var trackingManager: ARTrackingManager
     @Environment(\.dismiss) var dismiss
     
     @State private var sensitivity: Double = 1.0
     @State private var smoothing: Double = 0.6
     @State private var stealthMode: Bool = true
+    @State private var selectedMode: TrackingMode = .faceTracking
     
     var body: some View {
         NavigationView {
             Form {
-                Section("Tracking") {
-                    Slider(value: $sensitivity, in: 0.5...2.0, step: 0.1) {
-                        Text("Sensitivity")
+                Section("Tracking Mode") {
+                    Picker("Mode", selection: $selectedMode) {
+                        ForEach(TrackingMode.allCases, id: \.self) { mode in
+                            HStack {
+                                Image(systemName: mode.icon)
+                                Text(mode.rawValue)
+                            }
+                            .tag(mode)
+                        }
                     }
-                    Slider(value: $smoothing, in: 0.1...1.0, step: 0.1) {
-                        Text("Smoothing")
+                    .pickerStyle(.segmented)
+                    
+                    Text(selectedMode.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Section("Parameters") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Sensitivity")
+                                .font(.subheadline)
+                            Spacer()
+                            Text(String(format: "%.1fx", sensitivity))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $sensitivity, in: 0.5...2.0, step: 0.1)
+                        Text("Multiplies head movement range")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Smoothing")
+                                .font(.subheadline)
+                            Spacer()
+                            Text(String(format: "%.1f", smoothing))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $smoothing, in: 0.1...1.0, step: 0.1)
+                        Text("Higher = smoother but more latency")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
                 
@@ -278,6 +324,14 @@ struct SettingsView: View {
                         Spacer()
                         Text("\(transportManager.udpPort)")
                             .foregroundColor(.secondary)
+                    }
+                    if trackingManager.isTracking {
+                        HStack {
+                            Text("Status")
+                            Spacer()
+                            Text(trackingManager.isFaceDetected ? "Tracking" : "No Detection")
+                                .foregroundColor(trackingManager.isFaceDetected ? .green : .red)
+                        }
                     }
                 }
             }
@@ -301,14 +355,17 @@ struct SettingsView: View {
         sensitivity = Double(transportManager.settings.sensitivity)
         smoothing = Double(transportManager.settings.smoothing)
         stealthMode = transportManager.settings.stealthMode
+        selectedMode = transportManager.settings.trackingMode
     }
     
     private func saveSettings() {
         let settings = TrackingSettings(
             sensitivity: Float(sensitivity),
             smoothing: Float(smoothing),
-            stealthMode: stealthMode
+            stealthMode: stealthMode,
+            trackingMode: selectedMode
         )
         transportManager.updateSettings(settings)
+        trackingManager.trackingMode = selectedMode
     }
 }
