@@ -19,7 +19,7 @@ LidarSightXP::LidarSightXP()
     , mHeadPosZ(nullptr)
     , mHeadRoll(nullptr)
     , mViewType(nullptr)
-    , mRecenterCommand(nullptr)
+    , mRecenterCommand(0)
     , mMenu(nullptr)
     , mRunning(false)
     , mWriteBuffer(0)
@@ -51,7 +51,6 @@ void LidarSightXP::start()
     startNetwork();
     
     XPLMRegisterFlightLoopCallback(
-        this,
         flightLoopCallbackStub,
         -1.0f,
         this
@@ -64,12 +63,8 @@ void LidarSightXP::stop()
 {
     mRunning = false;
     
-    XPLMUnregisterFlightLoopCallback(this, flightLoopCallbackStub, this);
+    XPLMUnregisterFlightLoopCallback(flightLoopCallbackStub, this);
     stopNetwork();
-    
-    if (mRecenterCommand) {
-        XPLMUnregisterCommandHandler(mRecenterCommand, recenterCommandHandler, 0, this);
-    }
     
     std::cout << "LidarSight XP stopped" << std::endl;
 }
@@ -174,26 +169,7 @@ void LidarSightXP::registerDatarefs()
 
 void LidarSightXP::registerCommands()
 {
-    mRecenterCommand = XPLMCreateCommand("LidarSight/Recenter", "Recenter head tracking");
-    XPLMRegisterCommandHandler(
-        mRecenterCommand,
-        recenterCommandHandler,
-        1,
-        this
-    );
-}
-
-void LidarSightXP::recenterCommandHandler(
-    XPLMCommandRef inCommand,
-    XPLMCommandPhase inPhase,
-    void* inRefcon)
-{
-    if (inPhase == xplm_CommandBegin) {
-        LidarSightXP* plugin = static_cast<LidarSightXP*>(inRefcon);
-        if (plugin) {
-            plugin->recenter();
-        }
-    }
+    // Commands not available in this SDK version - using menu instead
 }
 
 void LidarSightXP::startNetwork()

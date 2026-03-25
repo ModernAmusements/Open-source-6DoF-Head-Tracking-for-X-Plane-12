@@ -43,9 +43,7 @@ private:
     void applyOneEuroFilter();
     void recenter();
     
-    static void recenterCommandHandler(XPLMCommandRef inCommand, 
-                                       XPLMCommandPhase inPhase, 
-                                       void* inRefcon);
+    static void recenterCommandHandler(void* inRefcon);
     
     XPLMDataRef mHeadPosX;
     XPLMDataRef mHeadPosY;
@@ -53,7 +51,7 @@ private:
     XPLMDataRef mHeadRoll;
     XPLMDataRef mViewType;
     
-    XPLMCommandRef mRecenterCommand;
+    int mRecenterCommand;
     XPLMMenuID mMenu;
     
     std::atomic<bool> mRunning;

@@ -1,0 +1,7 @@
+/Users/modernamusmenet/Desktop/xplane12-headtracking/macos/LidarSightXP/build/CMakeFiles/LidarSightXP.dir
+/Users/modernamusmenet/Desktop/xplane12-headtracking/macos/LidarSightXP/build/CMakeFiles/edit_cache.dir
+/Users/modernamusmenet/Desktop/xplane12-headtracking/macos/LidarSightXP/build/CMakeFiles/rebuild_cache.dir
+/Users/modernamusmenet/Desktop/xplane12-headtracking/macos/LidarSightXP/build/CMakeFiles/list_install_components.dir
+/Users/modernamusmenet/Desktop/xplane12-headtracking/macos/LidarSightXP/build/CMakeFiles/install.dir
+/Users/modernamusmenet/Desktop/xplane12-headtracking/macos/LidarSightXP/build/CMakeFiles/install/local.dir
+/Users/modernamusmenet/Desktop/xplane12-headtracking/macos/LidarSightXP/build/CMakeFiles/install/strip.dir
