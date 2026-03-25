@@ -8,34 +8,21 @@ struct ARSceneView: UIViewRepresentable {
     func makeUIView(context: Context) -> ARSCNView {
         let arView = ARSCNView()
         arView.automaticallyUpdatesLighting = true
-        arView.session = ARSession()
         arView.delegate = context.coordinator
-        
-        if ARFaceTrackingConfiguration.isSupported {
-            let config = ARFaceTrackingConfiguration()
-            config.isLightEstimationEnabled = true
-            config.maximumNumberOfTrackedFaces = 1
-            arView.session.run(config)
-        }
-        
         return arView
     }
     
     func updateUIView(_ uiView: ARSCNView, context: Context) {
+        if let session = trackingManager.arSession {
+            uiView.session = session
+        }
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+        Coordinator()
     }
     
     class Coordinator: NSObject, ARSCNViewDelegate {
-        var parent: ARSceneView
-        var faceNode: SCNNode?
-        
-        init(_ parent: ARSceneView) {
-            self.parent = parent
-        }
-        
         func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
             guard ARFaceTrackingConfiguration.isSupported,
                   anchor is ARFaceAnchor else { return nil }
@@ -50,7 +37,6 @@ struct ARSceneView: UIViewRepresentable {
             faceNode.geometry?.firstMaterial?.diffuse.contents = UIColor.cyan.withAlphaComponent(0.6)
             faceNode.geometry?.firstMaterial?.isDoubleSided = true
             
-            self.faceNode = faceNode
             return faceNode
         }
         

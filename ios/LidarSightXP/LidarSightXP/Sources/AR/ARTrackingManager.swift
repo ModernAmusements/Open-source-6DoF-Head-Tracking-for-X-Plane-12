@@ -12,6 +12,7 @@ class ARTrackingManager: NSObject, ObservableObject {
     @Published var trackingMode: TrackingMode = .faceTracking
     
     private var session: ARSession?
+    var arSession: ARSession? { session }
     private var faceConfiguration: ARFaceTrackingConfiguration?
     private var worldConfiguration: ARWorldTrackingConfiguration?
     private var packetId: UInt32 = 0
