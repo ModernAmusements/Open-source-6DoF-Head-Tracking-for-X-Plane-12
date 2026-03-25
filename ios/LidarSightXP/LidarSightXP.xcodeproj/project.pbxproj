@@ -15,20 +15,35 @@
 		ADD891087C3FE2A97676CCC5 /* HeadPose.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7395361601C73BEDF5DB5E4 /* HeadPose.swift */; };
 		AF69D0A1A23DB0B4F35C44EA /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A79CE9A947E85E6695958DC /* ContentView.swift */; };
 		D1C9A033A23E4215581DA7C1 /* LidarSightXPApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD9CAAB288FC46691C555D7 /* LidarSightXPApp.swift */; };
+		E81B247C2B20F2A8C020C269 /* Pods_LidarSightXP.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B5A1E8C878B00CD5AEC6D48 /* Pods_LidarSightXP.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0F94C82E4672C0D143E3C97F /* ARSceneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARSceneView.swift; sourceTree = "<group>"; };
+		1B5A1E8C878B00CD5AEC6D48 /* Pods_LidarSightXP.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LidarSightXP.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A79CE9A947E85E6695958DC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3A4AC05F190A28987FE0450D /* CalibrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationManager.swift; sourceTree = "<group>"; };
 		4FD9CAAB288FC46691C555D7 /* LidarSightXPApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LidarSightXPApp.swift; sourceTree = "<group>"; };
+		7B6EAAA543129A1CB45C0B25 /* Pods-LidarSightXP.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LidarSightXP.debug.xcconfig"; path = "Target Support Files/Pods-LidarSightXP/Pods-LidarSightXP.debug.xcconfig"; sourceTree = "<group>"; };
 		87C9ABF8126FAC0C78C791AB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		93AEBF4BC08F3D2468A45049 /* HeadPosePacket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadPosePacket.swift; sourceTree = "<group>"; };
+		C09A9FA90BEECC5C50BE7CDC /* Pods-LidarSightXP.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LidarSightXP.release.xcconfig"; path = "Target Support Files/Pods-LidarSightXP/Pods-LidarSightXP.release.xcconfig"; sourceTree = "<group>"; };
 		C5A08418EF61324861601BFF /* LidarSightXP.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LidarSightXP.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7395361601C73BEDF5DB5E4 /* HeadPose.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadPose.swift; sourceTree = "<group>"; };
 		F90761BC8303D84BE474E087 /* ARTrackingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARTrackingManager.swift; sourceTree = "<group>"; };
 		FCA2822733B2351C1A703A7B /* TransportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransportManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		696DF959F1720CD62C6B7350 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E81B247C2B20F2A8C020C269 /* Pods_LidarSightXP.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		20890BD1663B44AA4E455B69 /* Models */ = {
@@ -73,6 +88,16 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		5F07E140F29085F5B482F4C8 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				7B6EAAA543129A1CB45C0B25 /* Pods-LidarSightXP.debug.xcconfig */,
+				C09A9FA90BEECC5C50BE7CDC /* Pods-LidarSightXP.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		65D896BBC3C72B4D1C65ED5A /* LidarSightXP */ = {
 			isa = PBXGroup;
 			children = (
@@ -102,6 +127,14 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		C13662174A0AB11FD0550E8A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1B5A1E8C878B00CD5AEC6D48 /* Pods_LidarSightXP.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		D54F428D38FF5261FAF0CD6F /* UI */ = {
 			isa = PBXGroup;
 			children = (
@@ -116,6 +149,8 @@
 			children = (
 				65D896BBC3C72B4D1C65ED5A /* LidarSightXP */,
 				558BEDE0243DE3787FFFC18B /* Products */,
+				5F07E140F29085F5B482F4C8 /* Pods */,
+				C13662174A0AB11FD0550E8A /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -126,15 +161,16 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = B2B18D9FA0EAA198BEB8DA3E /* Build configuration list for PBXNativeTarget "LidarSightXP" */;
 			buildPhases = (
+				7C4CB091DC1F10676C9A2D7C /* [CP] Check Pods Manifest.lock */,
 				CB4258379C2546AB57BF505A /* Sources */,
+				696DF959F1720CD62C6B7350 /* Frameworks */,
+				A9E5152966E552E41295AB59 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = LidarSightXP;
-			packageProductDependencies = (
-			);
 			productName = LidarSightXP;
 			productReference = C5A08418EF61324861601BFF /* LidarSightXP.app */;
 			productType = "com.apple.product-type.application";
@@ -172,6 +208,48 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		7C4CB091DC1F10676C9A2D7C /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-LidarSightXP-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		A9E5152966E552E41295AB59 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-LidarSightXP/Pods-LidarSightXP-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-LidarSightXP/Pods-LidarSightXP-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-LidarSightXP/Pods-LidarSightXP-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		CB4258379C2546AB57BF505A /* Sources */ = {
@@ -260,6 +338,7 @@
 		};
 		7E2A87B7EDDC3EC561F0A015 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7B6EAAA543129A1CB45C0B25 /* Pods-LidarSightXP.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "";
@@ -278,6 +357,7 @@
 		};
 		8FDBC51A5E915543E7367858 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C09A9FA90BEECC5C50BE7CDC /* Pods-LidarSightXP.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "";
