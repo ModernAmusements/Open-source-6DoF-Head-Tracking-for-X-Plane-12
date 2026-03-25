@@ -226,5 +226,39 @@ struct HeadPosePacket {
 
 ---
 
+## Session 6: UDP Fix & Face Visualization
+
+### Issue: UDP Error 22
+**Problem:** "Invalid argument" NWError 22 when broadcasting packets
+**Fix:** Changed from creating new NWConnection per-packet to persistent connection
+
+### Issue: Duplicate AR Sessions
+**Problem:** ARSCNView warning about duplicate sessions, camera errors
+**Fix:** ARSceneView now uses session from ARTrackingManager instead of creating its own
+
+### Issue: Face Visualization
+**Problem:** No visual representation of head movement
+**Fix:** Added ARSCNFaceGeometry wireframe mesh that tracks face
+
+### Issue: LiDAR Support
+**Problem:** User wanted LiDAR mode (only on Pro models)
+**Fix:** Added TrackingMode enum with Face/LiDAR options in settings
+
+### Issue: Interface Orientations
+**Problem:** Warning about missing orientations
+**Fix:** Added all orientations to Info.plist and project.yml
+
+### Issue: Slider Descriptions
+**Problem:** Settings sliders had no descriptions
+**Fix:** Added labels, values, and explanatory text
+
+### Commits Made
+- `7cf28df` - Add LiDAR tracking mode and fix UDP broadcast error
+- `8529453` - Add .gitignore for Xcode and build files
+- `6342080` - Remove Xcode project files from git
+- `edaf03f` - Fix ARSession sharing between ARSceneView and ARTrackingManager
+
+---
+
 *Conversation logged: March 25, 2026*
 *Author: Shady Tawfik*
