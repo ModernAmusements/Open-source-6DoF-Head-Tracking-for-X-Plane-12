@@ -9,12 +9,13 @@ xcuserdata
 **/project.pbxproj
 **/UserInterfaceState.xcuserstate
 
-# macOS plugin
-*.xpl/
+# macOS plugin build
+macos/*/build/
+macos/*/dist/*.xpl
 *.so
 *.dylib
+*.o
 
 # Secrets
 *.env
 *.pem
-CONVERSATION.md
