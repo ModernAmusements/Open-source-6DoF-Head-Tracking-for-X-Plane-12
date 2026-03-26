@@ -3,9 +3,6 @@
 <p align="center">
   <strong>Professional-grade open-source 6DoF head-tracking for X-Plane 12</strong>
 </p>
-cd ios/LidarSightXP
-xcodegen generate
-open LidarSightXP.xcodeproj
 
 <p align="center">
   <a href="#overview">Overview</a> •
@@ -35,6 +32,7 @@ This project provides:
 ## Features
 
 - **6DoF Head Tracking** - Full position (X, Y, Z) and rotation (pitch, yaw, roll)
+- **Eye Tracking** - Three modes: Head Only, Eyes Only, Head + Eyes (30% eye fine control)
 - **WiFi UDP** - UDP broadcast on port 4242
 - **One Euro Filter** - Smooth motion with adaptive cutoff for jitter-free tracking
 - **Liquid Glass UI** - Native iOS glassmorphism interface
@@ -69,17 +67,22 @@ This project provides:
 
 ### macOS Plugin
 
+**Quick Install (pre-built):**
+
+The plugin is included in this repo at `macos/LidarSightXP/dist/LidarSightXP.xpl`.
+
+Copy to X-Plane plugins folder:
+```bash
+mkdir -p "/Users/modernamusmenet/X-Plane 12/Resources/plugins/LidarSightXP/mac_x64"
+cp macos/LidarSightXP/dist/LidarSightXP.xpl "/Users/modernamusmenet/X-Plane 12/Resources/plugins/LidarSightXP/mac_x64/"
+```
+
+**Or build from source:**
 ```bash
 cd macos/LidarSightXP
 mkdir build && cd build
 cmake -DXPLANE_SDK=../../SDK ..
 make
-```
-
-Copy plugin to X-Plane:
-```bash
-mkdir -p ~/Library/Application\ Support/X-Plane\ 12/Plugins/LidarSightXP.xpl/
-cp dist/LidarSightXP.xpl ~/Library/Application\ Support/X-Plane\ 12/Plugins/LidarSightXP.xpl/
 ```
 
 ---
@@ -120,7 +123,15 @@ If head tracking drifts over time:
 |---------|-------------|
 | Sensitivity | Multiplier for head movement range (0.5 - 2.0) |
 | Smoothing | One Euro filter strength |
+| Eye Sensitivity | Multiplier for eye movement (higher = more eye control) |
 | Stealth Mode | Auto-dim display after 10s of stable tracking |
+| Tracking Mode | Head Only, Eyes Only, Head + Eyes |
+
+### Tracking Modes
+
+- **Head Only** - Original face tracking, head movement controls view
+- **Eyes Only** - Eye direction controls view (minimal head movement needed)
+- **Head + Eyes** - Eyes add 30% fine control on top of head movement
 
 ---
 
@@ -186,8 +197,9 @@ struct HeadPosePacket {
 | Face not detected | Ensure good lighting, face within frame |
 | Tracking jitter | Increase smoothing in settings |
 | Head position drifts | Tap "Recenter" to reset |
-| Plugin not loading | Check Console.app for X-Plane errors |
+| Plugin not visible in X-Plane | Ensure X-Plane 12.0.3 or later, check Log.txt for errors |
 | WiFi not connecting | Ensure iPhone and Mac on same network |
+| UDP Error 22 | App will request local network permission - allow it |
 | Works in external view | Normal - only affects cockpit view 1017 |
 
 ---
@@ -269,11 +281,11 @@ make
 **Installing the Plugin:**
 
 ```bash
-# Create X-Plane plugins directory
-mkdir -p ~/Library/Application\ Support/X-Plane\ 12/Resources/plugins/LidarSightXP/MacOS/
+# Create X-Plane plugins directory (X-Plane 12 format)
+mkdir -p "/Users/[YOUR_USERNAME]/X-Plane 12/Resources/plugins/LidarSightXP/mac_x64"
 
 # Copy plugin
-cp dist/LidarSightXP.xpl ~/Library/Application\ Support/X-Plane\ 12/Resources/plugins/LidarSightXP/MacOS/
+cp dist/LidarSightXP.xpl "/Users/[YOUR_USERNAME]/X-Plane 12/Resources/plugins/LidarSightXP/mac_x64/"
 ```
 
 Restart X-Plane after installation. The plugin will appear under `Plugins → LidarSightXP`.
