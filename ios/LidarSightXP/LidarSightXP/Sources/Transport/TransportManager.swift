@@ -280,8 +280,10 @@ class TransportManager: ObservableObject {
     }
     
     private func setupBroadcastConnection() {
+        let broadcastAddress = getBroadcastAddress()
+        
         let endpoint = NWEndpoint.hostPort(
-            host: NWEndpoint.Host("255.255.255.255"),
+            host: NWEndpoint.Host(broadcastAddress),
             port: NWEndpoint.Port(rawValue: udpPort)!
         )
         
@@ -307,6 +309,18 @@ class TransportManager: ObservableObject {
         }
         
         broadcastConnection?.start(queue: .global(qos: .userInitiated))
+    }
+    
+    private func getBroadcastAddress() -> String {
+        let components = localIP.split(separator: ".")
+        guard components.count == 4 else { return "255.255.255.255" }
+        
+        if let last = Int(components[3]) {
+            let broadcast = 255
+            return "\(components[0]).\(components[1]).\(components[2]).\(broadcast)"
+        }
+        
+        return "255.255.255.255"
     }
     
     private func broadcastPacket(_ data: Data) {
