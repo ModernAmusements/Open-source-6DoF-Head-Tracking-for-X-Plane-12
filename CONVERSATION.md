@@ -335,5 +335,85 @@ struct HeadPosePacket {
 
 ---
 
+## Session 10: Plugin Loading Issues & Fix
+
+### Issue: Plugin Not Visible in X-Plane
+**Problem:** Plugin file existed but X-Plane couldn't load it
+**Root Cause:** Missing X-Plane SDK entry point functions
+**Solution:** Added required plugin callbacks
+
+### Missing Entry Points
+The plugin was missing these required functions:
+- `XPluginStart()` - Called when X-Plane loads the plugin
+- `XPluginStop()` - Called when X-Plane unloads the plugin
+- `XPluginEnable()` - Called when plugin is enabled
+- `XPluginDisable()` - Called when plugin is disabled
+- `XPluginReceiveMessage()` - Handles inter-plugin messages
+
+### Fix Applied
+Added entry point functions to `LidarSightXP.cpp`:
+```cpp
+PLUGIN_API int XPluginStart(char* outName, char* outSignature, char* outDescription)
+PLUGIN_API void XPluginStop()
+PLUGIN_API int XPluginEnable()
+PLUGIN_API void XPluginDisable()
+PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, long inMessage, void* inParam)
+```
+
+### Plugin Folder Structure
+Updated to match AviTab format:
+```
+LidarSightXP/
+├── LICENSE
+├── config.json
+├── readme.txt
+└── mac_x64/
+    └── LidarSightXP.xpl
+```
+
+### Commits Made
+- `bc85f3c` - Add X-Plane SDK entry point functions
+- `55c218a` - Rebuild plugin with entry point functions
+- `244f50c` - Add plugin distribution files (LICENSE, config.json, readme.txt)
+- `e636e66` - Remove build artifacts from git tracking
+
+---
+
+## Session 11: UDP Broadcast Fix
+
+### Issue: NWError 22 - Invalid Argument
+**Problem:** UDP broadcast packets failing with "Invalid argument" error
+**Root Cause:** Using hardcoded `255.255.255.255` broadcast address on iOS 14+
+**Solution:** Dynamically compute broadcast address from local IP
+
+### Fix Applied
+Modified `TransportManager.swift`:
+- Added `getBroadcastAddress()` function that computes broadcast from local IP
+- Example: IP `192.168.1.100` → broadcast `192.168.1.255`
+
+### Commit Made
+- `80d1923` - Fix NWError 22 by using dynamic broadcast address
+
+---
+
+## Session 12: ARKit Eye Tracking Fixes
+
+### Issue: isEyeTrackingEnabled Not Available
+**Problem:** `ARFaceTrackingConfiguration` has no member `isEyeTrackingEnabled`
+**Fix:** Removed unavailable property, eye tracking enabled by default on supported devices
+
+### Issue: Optional Binding Error
+**Problem:** `leftEyeTransform` and `rightEyeTransform` are non-optional
+**Fix:** Changed from optional binding to direct assignment
+
+### Issue: SwiftUI View Closure Error
+**Problem:** `[weak self]` applied to SwiftUI struct (value type, not class)
+**Fix:** Changed to `[self]` capture
+
+### Commits Made
+- `2427f81` - Fix ARKit eye tracking and SwiftUI closure issues
+
+---
+
 *Conversation logged: March 26, 2026*
 *Author: Shady Tawfik*
