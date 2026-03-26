@@ -94,10 +94,6 @@ class ARTrackingManager: NSObject, ObservableObject {
         config.isLightEstimationEnabled = true
         config.maximumNumberOfTrackedFaces = 1
         
-        if trackingMode.usesEyeTracking {
-            config.isEyeTrackingEnabled = true
-        }
-        
         faceConfiguration = config
         session = ARSession()
         session?.delegate = self
@@ -157,10 +153,11 @@ class ARTrackingManager: NSObject, ObservableObject {
         
         let rotation = extractEulerAngles(from: transform)
         
-        var eyeRotation: SIMD3<Float>? = nil
+        var eyeRotation: SIMD3<Float>?
         
         if trackingMode.usesEyeTracking {
-            eyeRotation = extractEyeRotation(from: anchor)
+            let eyeRot = extractEyeRotation(from: anchor)
+            eyeRotation = eyeRot
         }
         
         var pose = HeadPose(
@@ -183,11 +180,9 @@ class ARTrackingManager: NSObject, ObservableObject {
         transportManager?.sendPose(pose)
     }
     
-    private func extractEyeRotation(from anchor: ARFaceAnchor) -> SIMD3<Float>? {
-        guard let leftEye = anchor.leftEyeTransform,
-              let rightEye = anchor.rightEyeTransform else {
-            return nil
-        }
+    private func extractEyeRotation(from anchor: ARFaceAnchor) -> SIMD3<Float> {
+        let leftEye = anchor.leftEyeTransform
+        let rightEye = anchor.rightEyeTransform
         
         let leftRot = extractEulerAngles(from: leftEye)
         let rightRot = extractEulerAngles(from: rightEye)

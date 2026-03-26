@@ -225,10 +225,10 @@ struct StartButtonView: View {
     
     var body: some View {
         Button(action: {
-            transportManager.requestLocalNetworkPermission { [weak self] in
-                self?.transportManager.startUDPServer()
-                self?.trackingManager.trackingMode = self?.transportManager.settings.trackingMode ?? .headOnly
-                self?.trackingManager.startTracking()
+            transportManager.requestLocalNetworkPermission { [self] in
+                transportManager.startUDPServer()
+                trackingManager.trackingMode = transportManager.settings.trackingMode
+                trackingManager.startTracking()
             }
         }) {
             VStack(spacing: 8) {
