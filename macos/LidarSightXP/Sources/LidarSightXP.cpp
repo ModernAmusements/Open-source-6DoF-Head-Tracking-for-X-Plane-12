@@ -13,6 +13,43 @@ static const int UDP_PORT = 4242;
 static const int COCKPIT_VIEW_TYPE = 1017;
 static const double DEFAULT_DT = 1.0 / 60.0;
 
+PLUGIN_API int XPluginStart(char* outName, char* outSignature, char* outDescription)
+{
+    strcpy(outName, "LidarSight XP");
+    strcpy(outSignature, "com.lidarsight.xp");
+    strcpy(outDescription, "6DoF head tracking for X-Plane 12 using iPhone ARKit");
+    
+    gPlugin = new LidarSightXP();
+    gPlugin->start();
+    
+    return 1;
+}
+
+PLUGIN_API void XPluginStop()
+{
+    if (gPlugin) {
+        gPlugin->stop();
+        delete gPlugin;
+        gPlugin = nullptr;
+    }
+}
+
+PLUGIN_API int XPluginEnable()
+{
+    return 1;
+}
+
+PLUGIN_API void XPluginDisable()
+{
+}
+
+PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, long inMessage, void* inParam)
+{
+    if (gPlugin) {
+        gPlugin->receiveMessage(inFromWho, inMessage, inParam);
+    }
+}
+
 LidarSightXP::LidarSightXP()
     : mHeadPosX(nullptr)
     , mHeadPosY(nullptr)
