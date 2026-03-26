@@ -17,3 +17,4 @@ xcuserdata
 # Secrets
 *.env
 *.pem
+CONVERSATION.md

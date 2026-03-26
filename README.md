@@ -3,6 +3,9 @@
 <p align="center">
   <strong>Professional-grade open-source 6DoF head-tracking for X-Plane 12</strong>
 </p>
+cd ios/LidarSightXP
+xcodegen generate
+open LidarSightXP.xcodeproj
 
 <p align="center">
   <a href="#overview">Overview</a> •
