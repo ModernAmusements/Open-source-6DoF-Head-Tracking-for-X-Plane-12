@@ -35,6 +35,9 @@ targets:
         UILaunchScreen:
           UIColorName: ""
         NSCameraUsageDescription: "LidarSight XP needs camera access to track your face for head tracking in X-Plane."
+        NSLocalNetworkUsageDescription: "LidarSight XP needs local network access to send head tracking data to your Mac."
+        NSBonjourServices:
+          - _lidarsight._udp
         UIRequiredDeviceCapabilities:
           - armv7
           - arkit

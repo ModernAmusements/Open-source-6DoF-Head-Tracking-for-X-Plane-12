@@ -22,6 +22,12 @@
 	<string>1</string>
 	<key>NSCameraUsageDescription</key>
 	<string>LidarSight XP needs camera access to track your face for head tracking in X-Plane.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>LidarSight XP needs local network access to send head tracking data to your Mac.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_lidarsight._udp</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

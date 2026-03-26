@@ -201,26 +201,82 @@ struct HeadPosePacket {
 - **CMake 3.20+** (for macOS plugin)
 - **X-Plane SDK 4.0** (included in repo as `SDK/`)
 
-### iOS App
+### iOS App Build Guide
 
 ```bash
+# 1. Navigate to iOS project
 cd ios/LidarSightXP
+
+# 2. Generate Xcode project
 xcodegen generate
+
+# 3. Open in Xcode
 open LidarSightXP.xcodeproj
+
+# 4. Select your device and click Run (Cmd+R)
 ```
 
-Select your device and click Run.
+**Build Settings:**
+- Deployment Target: iOS 15.0+
+- Required Device: iPhone X or later (TrueDepth camera required)
 
-### macOS Plugin
+### macOS Plugin Build Guide
+
+**Option 1: Using pre-configured build (recommended)**
 
 ```bash
+# Navigate to plugin directory
 cd macos/LidarSightXP
-mkdir build && cd build
-cmake -DXPLANE_SDK=../../SDK ..
+
+# Clean and rebuild
+cd build
+make clean
+cmake ..
 make
 ```
 
-The built plugin will be in `dist/LidarSightXP.xpl`
+**Option 2: Manual configuration**
+
+```bash
+# Navigate to plugin directory
+cd macos/LidarSightXP
+
+# Create and enter build directory
+mkdir build
+cd build
+
+# Configure with CMake (specify SDK path)
+cmake -DXPLANE_SDK=../../SDK ..
+
+# Build the plugin
+make
+```
+
+**Build Output:**
+- Plugin location: `dist/LidarSightXP.xpl`
+- File type: Mach-O universal binary (x86_64 + arm64)
+- Size: ~138KB
+
+**Troubleshooting Build:**
+
+| Issue | Solution |
+|-------|----------|
+| CMake can't find SDK | Ensure SDK folder is at repo root |
+| Missing XPLM.framework | Verify SDK/Libraries/Mac/XPLM.framework exists |
+| Symbol not found | Ensure X-Plane SDK headers are in CHeaders/XPLM/ |
+| Wrong architecture | Build includes -arch arm64 -arch x86_64 for universal binary |
+
+**Installing the Plugin:**
+
+```bash
+# Create X-Plane plugins directory
+mkdir -p ~/Library/Application\ Support/X-Plane\ 12/Resources/plugins/LidarSightXP/MacOS/
+
+# Copy plugin
+cp dist/LidarSightXP.xpl ~/Library/Application\ Support/X-Plane\ 12/Resources/plugins/LidarSightXP/MacOS/
+```
+
+Restart X-Plane after installation. The plugin will appear under `Plugins → LidarSightXP`.
 
 ---
 

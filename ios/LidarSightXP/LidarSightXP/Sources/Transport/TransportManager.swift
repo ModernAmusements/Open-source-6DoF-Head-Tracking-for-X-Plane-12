@@ -8,10 +8,12 @@ class TransportManager: ObservableObject {
     @Published var isUSBConnected: Bool = false
     @Published var localIP: String = "0.0.0.0"
     @Published var udpPort: UInt16 = 4242
+    @Published var needsLocalNetworkPermission: Bool = false
     
     private var listener: NWListener?
     private var broadcastConnection: NWConnection?
     private var packetId: UInt32 = 0
+    private var browser: NWBrowser?
     var calibrationOffset: CalibrationOffset = CalibrationOffset()
     var settings: TrackingSettings = TrackingSettings()
     
@@ -84,6 +86,38 @@ class TransportManager: ObservableObject {
            let saved = try? JSONDecoder().decode(CalibrationOffset.self, from: data) {
             calibrationOffset = saved
         }
+    }
+    
+    func requestLocalNetworkPermission(completion: @escaping () -> Void) {
+        let parameters = NWParameters()
+        parameters.includePeerToPeer = true
+        
+        browser = NWBrowser(for: .bonjour(type: "_lidarsight._udp", domain: nil), using: parameters)
+        
+        browser?.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .ready:
+                DispatchQueue.main.async {
+                    self?.needsLocalNetworkPermission = false
+                    completion()
+                }
+            case .failed(let error):
+                print("Browser failed: \(error)")
+                DispatchQueue.main.async {
+                    self?.needsLocalNetworkPermission = true
+                }
+            default:
+                break
+            }
+        }
+        
+        browser?.start(queue: .global(qos: .userInitiated))
+        needsLocalNetworkPermission = true
+    }
+    
+    func startUDPServerIfReady() {
+        guard !needsLocalNetworkPermission else { return }
+        startUDPServer()
     }
     
     func startUDPServer() {
@@ -163,12 +197,58 @@ class TransportManager: ObservableObject {
         var packet = HeadPosePacket()
         packet.packetId = packetId
         packet.timestampUs = Float(pose.timestamp * 1_000_000)
-        packet.x = (pose.position.x - calibrationOffset.position.x) * settings.sensitivity
-        packet.y = (pose.position.y - calibrationOffset.position.y) * settings.sensitivity
-        packet.z = (pose.position.z - calibrationOffset.position.z) * settings.sensitivity
-        packet.pitch = (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity
-        packet.yaw = (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity
-        packet.roll = (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
+        
+        let useEyeRotation = settings.trackingMode.usesEyeTracking && pose.eyeRotation != nil
+        let eyeWeight: Float = 0.3 // Eyes contribute 30% in head+eyes mode
+        
+        let finalRotation: SIMD3<Float>
+        
+        if useEyeRotation, let eyeRot = pose.eyeRotation {
+            let eyeOffset = SIMD3<Float>(
+                (eyeRot.x - calibrationOffset.rotation.x) * settings.eyeSensitivity,
+                (eyeRot.y - calibrationOffset.rotation.y) * settings.eyeSensitivity,
+                (eyeRot.z - calibrationOffset.rotation.z) * settings.eyeSensitivity
+            )
+            
+            switch settings.trackingMode {
+            case .eyesOnly:
+                finalRotation = eyeOffset
+            case .headAndEyes:
+                let headRot = SIMD3<Float>(
+                    (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
+                    (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
+                    (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
+                )
+                finalRotation = SIMD3<Float>(
+                    headRot.x + eyeOffset.x * eyeWeight,
+                    headRot.y + eyeOffset.y * eyeWeight,
+                    headRot.z + eyeOffset.z * eyeWeight
+                )
+            default:
+                finalRotation = SIMD3<Float>(
+                    (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
+                    (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
+                    (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
+                )
+            }
+        } else {
+            finalRotation = SIMD3<Float>(
+                (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
+                (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
+                (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
+            )
+        }
+        
+        let rawX = (pose.position.x - calibrationOffset.position.x) * settings.sensitivity
+        let rawY = (pose.position.y - calibrationOffset.position.y) * settings.sensitivity
+        let rawZ = (pose.position.z - calibrationOffset.position.z) * settings.sensitivity
+        
+        packet.x = applyRangeMapping(rawX)
+        packet.y = applyRangeMapping(rawY)
+        packet.z = applyRangeMapping(rawZ)
+        packet.pitch = applyAngleClamp(finalRotation.x)
+        packet.yaw = applyAngleClamp(finalRotation.y)
+        packet.roll = applyAngleClamp(finalRotation.z)
         
         let isCalibrated = calibrationOffset != CalibrationOffset()
         packet.setFlag(.calibrated, isCalibrated)
@@ -181,6 +261,22 @@ class TransportManager: ObservableObject {
         } else {
             broadcastPacket(data)
         }
+    }
+    
+    private func applyAngleClamp(_ angle: Float) -> Float {
+        let maxA = settings.maxAngle
+        if abs(angle) <= maxA {
+            return angle
+        }
+        return maxA * (angle > 0 ? 1 : -1)
+    }
+    
+    private func applyRangeMapping(_ value: Float) -> Float {
+        let scale = settings.rangeScale
+        let sign: Float = value >= 0 ? 1 : -1
+        let absValue = abs(value)
+        let mapped = pow(absValue, 1.0 + scale)
+        return sign * mapped
     }
     
     private func setupBroadcastConnection() {

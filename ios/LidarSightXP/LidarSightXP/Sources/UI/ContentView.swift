@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct ContentView: View {
     @EnvironmentObject var trackingManager: ARTrackingManager
@@ -128,16 +127,30 @@ struct ConnectionStatusView: View {
                 .fill(statusColor)
                 .frame(width: 8, height: 8)
             
-            Text(statusText)
-                .font(.caption)
-                .foregroundColor(.white)
+            if transportManager.needsLocalNetworkPermission {
+                Text("Tap to enable")
+                    .font(.caption)
+                    .foregroundColor(.yellow)
+            } else {
+                Text(statusText)
+                    .font(.caption)
+                    .foregroundColor(.white)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(.ultraThinMaterial, in: Capsule())
+        .onTapGesture {
+            transportManager.requestLocalNetworkPermission {
+                transportManager.startUDPServer()
+            }
+        }
     }
     
     private var statusColor: Color {
+        if transportManager.needsLocalNetworkPermission {
+            return .yellow
+        }
         switch transportManager.connectionStatus {
         case .connected: return .green
         case .connecting: return .yellow
@@ -184,18 +197,46 @@ struct StartButtonView: View {
     @EnvironmentObject var trackingManager: ARTrackingManager
     @EnvironmentObject var transportManager: TransportManager
     
+    private var modeIcon: String {
+        switch trackingManager.trackingMode {
+        case .headOnly:
+            return "person.fill"
+        case .eyesOnly:
+            return "eye.fill"
+        case .headAndEyes:
+            return "person.fill.badge.plus"
+        case .lidar:
+            return "light.min"
+        }
+    }
+    
+    private var modeLabel: String {
+        switch trackingManager.trackingMode {
+        case .headOnly:
+            return "Head Only"
+        case .eyesOnly:
+            return "Eyes Only"
+        case .headAndEyes:
+            return "Head + Eyes"
+        case .lidar:
+            return "LiDAR Mode"
+        }
+    }
+    
     var body: some View {
         Button(action: {
-            transportManager.startUDPServer()
-            trackingManager.trackingMode = transportManager.settings.trackingMode
-            trackingManager.startTracking()
+            transportManager.requestLocalNetworkPermission { [weak self] in
+                self?.transportManager.startUDPServer()
+                self?.trackingManager.trackingMode = self?.transportManager.settings.trackingMode ?? .headOnly
+                self?.trackingManager.startTracking()
+            }
         }) {
             VStack(spacing: 8) {
-                Image(systemName: trackingManager.trackingMode == .lidar ? "light.min" : "face.dashed")
+                Image(systemName: modeIcon)
                     .font(.system(size: 40))
                 Text("Start Tracking")
                     .font(.headline)
-                Text(trackingManager.trackingMode == .lidar ? "LiDAR Mode" : "Face Tracking")
+                Text(modeLabel)
                     .font(.caption)
                     .opacity(0.7)
             }
@@ -254,7 +295,10 @@ struct SettingsView: View {
     @State private var sensitivity: Double = 1.0
     @State private var smoothing: Double = 0.6
     @State private var stealthMode: Bool = true
-    @State private var selectedMode: TrackingMode = .faceTracking
+    @State private var selectedMode: TrackingMode = .headOnly
+    @State private var maxAngle: Double = 45.0
+    @State private var rangeScale: Double = 0.7
+    @State private var eyeSensitivity: Double = 2.5
     
     var body: some View {
         NavigationView {
@@ -303,6 +347,53 @@ struct SettingsView: View {
                         }
                         Slider(value: $smoothing, in: 0.1...1.0, step: 0.1)
                         Text("Higher = smoother but more latency")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Max Angle")
+                                .font(.subheadline)
+                            Spacer()
+                            Text(String(format: "%.0f°", maxAngle))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $maxAngle, in: 15...90, step: 5)
+                        Text("Clamps rotation range to keep looking at screen")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Range Curve")
+                                .font(.subheadline)
+                            Spacer()
+                            Text(rangeScale == 0 ? "Linear" : String(format: "%.1f", rangeScale))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $rangeScale, in: 0...1.0, step: 0.1)
+                        Text("Non-linear mapping - higher = less movement needed at edges")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Section("Eye Tracking") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Eye Sensitivity")
+                                .font(.subheadline)
+                            Spacer()
+                            Text(String(format: "%.1fx", eyeSensitivity))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $eyeSensitivity, in: 1.0...5.0, step: 0.5)
+                        Text("Higher = more view movement from eye gaze")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -356,6 +447,9 @@ struct SettingsView: View {
         smoothing = Double(transportManager.settings.smoothing)
         stealthMode = transportManager.settings.stealthMode
         selectedMode = transportManager.settings.trackingMode
+        maxAngle = Double(transportManager.settings.maxAngle)
+        rangeScale = Double(transportManager.settings.rangeScale)
+        eyeSensitivity = Double(transportManager.settings.eyeSensitivity)
     }
     
     private func saveSettings() {
@@ -363,7 +457,10 @@ struct SettingsView: View {
             sensitivity: Float(sensitivity),
             smoothing: Float(smoothing),
             stealthMode: stealthMode,
-            trackingMode: selectedMode
+            trackingMode: selectedMode,
+            maxAngle: Float(maxAngle),
+            rangeScale: Float(rangeScale),
+            eyeSensitivity: Float(eyeSensitivity)
         )
         transportManager.updateSettings(settings)
         trackingManager.trackingMode = selectedMode

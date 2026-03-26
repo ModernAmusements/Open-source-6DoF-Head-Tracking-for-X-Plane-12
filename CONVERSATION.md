@@ -260,5 +260,80 @@ struct HeadPosePacket {
 
 ---
 
-*Conversation logged: March 25, 2026*
+## Session 7: NWError 22 Fix & Eye Tracking
+
+### Issue: UDP Broadcast Error 22
+**Problem:** "Invalid argument" NWError 22 when broadcasting packets
+**Root Cause:** iOS Local Network Privacy requirements (iOS 14+)
+**Fix:**
+- Added `NSLocalNetworkUsageDescription` to Info.plist
+- Added `NSBonjourServices` with `_lidarsight._udp`
+- Modified TransportManager to trigger permission via NWBrowser
+- Added completion handler to wait for permission before starting UDP
+
+### Issue: Eye Tracking Request
+**Problem:** User wanted eye tracking as an option to reduce head movement needed
+**Solution:** Added three new tracking modes:
+- **Head Only** (default) - Original face tracking
+- **Eyes Only** - Eye direction controls view
+- **Head + Eyes** - Eyes add 30% fine control on top of head
+
+### Files Modified
+1. **HeadPose.swift**
+   - Changed TrackingMode enum to include headOnly, eyesOnly, headAndEyes
+   - Added `eyeRotation` to HeadPose struct
+   - Added `eyeSensitivity` to TrackingSettings
+
+2. **ARTrackingManager.swift**
+   - Added `isEyeTrackingEnabled = true` in config for eye modes
+   - Added `extractEyeRotation()` to get eye transforms from ARFaceAnchor
+
+3. **TransportManager.swift**
+   - Modified `sendPose()` to handle three modes
+   - EyesOnly uses eye rotation with higher sensitivity
+   - HeadAndEyes combines head (70%) + eyes (30%)
+
+4. **ContentView.swift**
+   - Updated picker with 4 options
+   - Added Eye Sensitivity slider in settings
+   - Updated Start button icons per mode
+
+5. **Info.plist**
+   - Added NSLocalNetworkUsageDescription
+   - Added NSBonjourServices
+
+### Issue: LSP Errors
+**Problem:** Language server showing false positive errors
+**Solution:** Regenerated Xcode project with xcodegen - errors were due to missing project context, not actual code issues
+
+---
+
+## Session 8: macOS Plugin Build
+
+### Plugin Build Steps
+1. Verified SDK at `../../SDK`
+2. Updated CMakeLists.txt with:
+   - `-DAPL=1` (Apple platform flag)
+   - `-arch arm64 -arch x86_64` (universal binary)
+3. Built successfully with `cmake .. && make`
+4. Output: `dist/LidarSightXP.xpl` (138KB, universal binary)
+
+### Installation
+- Copy to `~/Library/Application Support/X-Plane 12/Resources/plugins/LidarSightXP/MacOS/`
+
+---
+
+## Session 9: Documentation Update
+
+### README.md Updated
+- Added detailed iOS build guide
+- Added detailed macOS plugin build guide with troubleshooting table
+- Updated build output section
+
+### Conversation Log Updated
+- Documented all Session 7-9 changes
+
+---
+
+*Conversation logged: March 26, 2026*
 *Author: Shady Tawfik*

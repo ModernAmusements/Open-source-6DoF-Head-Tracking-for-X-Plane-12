@@ -4,7 +4,7 @@ project(LidarSightXP)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAPL=1")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DAPL=1 -arch arm64 -arch x86_64")
 
 set(XPLANE_SDK ${CMAKE_SOURCE_DIR}/../../SDK)
 
@@ -36,8 +36,9 @@ target_link_libraries(${PLUGIN_NAME}
 set_target_properties(${PLUGIN_NAME} PROPERTIES
     PREFIX ""
     OUTPUT_NAME "${PLUGIN_NAME}.xpl"
-    LINK_FLAGS "-bundle"
+    LINK_FLAGS "-bundle -Wl,-e,_XPluginStart"
     MACOSX_BUNDLE FALSE
+    SUFFIX ""
 )
 
 set_target_properties(${PLUGIN_NAME} PROPERTIES

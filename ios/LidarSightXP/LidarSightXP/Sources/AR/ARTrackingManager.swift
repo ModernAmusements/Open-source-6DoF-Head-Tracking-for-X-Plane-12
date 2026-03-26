@@ -9,7 +9,7 @@ class ARTrackingManager: NSObject, ObservableObject {
     @Published var isFaceDetected: Bool = false
     @Published var trackingState: ARCamera.TrackingState = .notAvailable
     @Published var thermalState: ProcessInfo.ThermalState = .nominal
-    @Published var trackingMode: TrackingMode = .faceTracking
+    @Published var trackingMode: TrackingMode = .headOnly
     
     private var session: ARSession?
     var arSession: ARSession? { session }
@@ -60,7 +60,7 @@ class ARTrackingManager: NSObject, ObservableObject {
     
     private func getCurrentConfiguration() -> ARConfiguration? {
         switch trackingMode {
-        case .faceTracking:
+        case .headOnly, .eyesOnly, .headAndEyes:
             return faceConfiguration
         case .lidar:
             return worldConfiguration
@@ -71,9 +71,13 @@ class ARTrackingManager: NSObject, ObservableObject {
         ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
     }
     
+    static var isEyeTrackingSupported: Bool {
+        ARFaceTrackingConfiguration.isSupported
+    }
+    
     func startTracking() {
         switch trackingMode {
-        case .faceTracking:
+        case .headOnly, .eyesOnly, .headAndEyes:
             startFaceTracking()
         case .lidar:
             startLidarTracking()
@@ -89,6 +93,10 @@ class ARTrackingManager: NSObject, ObservableObject {
         let config = ARFaceTrackingConfiguration()
         config.isLightEstimationEnabled = true
         config.maximumNumberOfTrackedFaces = 1
+        
+        if trackingMode.usesEyeTracking {
+            config.isEyeTrackingEnabled = true
+        }
         
         faceConfiguration = config
         session = ARSession()
@@ -149,9 +157,16 @@ class ARTrackingManager: NSObject, ObservableObject {
         
         let rotation = extractEulerAngles(from: transform)
         
+        var eyeRotation: SIMD3<Float>? = nil
+        
+        if trackingMode.usesEyeTracking {
+            eyeRotation = extractEyeRotation(from: anchor)
+        }
+        
         var pose = HeadPose(
             position: position,
             rotation: rotation,
+            eyeRotation: eyeRotation,
             timestamp: CACurrentMediaTime(),
             isValid: true
         )
@@ -166,6 +181,22 @@ class ARTrackingManager: NSObject, ObservableObject {
         onPoseUpdate?(pose)
         
         transportManager?.sendPose(pose)
+    }
+    
+    private func extractEyeRotation(from anchor: ARFaceAnchor) -> SIMD3<Float>? {
+        guard let leftEye = anchor.leftEyeTransform,
+              let rightEye = anchor.rightEyeTransform else {
+            return nil
+        }
+        
+        let leftRot = extractEulerAngles(from: leftEye)
+        let rightRot = extractEulerAngles(from: rightEye)
+        
+        let avgPitch = (leftRot.x + rightRot.x) / 2
+        let avgYaw = (leftRot.y + rightRot.y) / 2
+        let avgRoll = (leftRot.z + rightRot.z) / 2
+        
+        return SIMD3<Float>(avgPitch, avgYaw, avgRoll)
     }
     
     private func processARAnchor(_ anchor: ARAnchor) {
