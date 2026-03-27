@@ -20,6 +20,13 @@ struct HeadPosePacket {
     float    x, y, z;
     float    pitch, yaw, roll;
 };
+
+#define OPENTRACK_PACKET_SIZE 48
+
+struct OpenTrackPacket {
+    double x, y, z;
+    double pitch, yaw, roll;
+};
 #pragma pack(pop)
 
 class LidarSightXP {

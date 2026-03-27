@@ -266,6 +266,27 @@ void LidarSightXP::startNetwork()
                 int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
                 mWriteBuffer.store(nextBuffer);
             }
+            else if (n == OPENTRACK_PACKET_SIZE) {
+                OpenTrackPacket otPacket;
+                memcpy(&otPacket, buffer, OPENTRACK_PACKET_SIZE);
+                
+                HeadPosePacket packet;
+                packet.packet_id = 0;
+                packet.flags = 0x02;
+                packet.timestamp_us = 0;
+                packet.x = static_cast<float>(otPacket.x);
+                packet.y = static_cast<float>(otPacket.y);
+                packet.z = static_cast<float>(otPacket.z);
+                packet.pitch = static_cast<float>(otPacket.pitch * 180.0 / M_PI);
+                packet.yaw = static_cast<float>(otPacket.yaw * 180.0 / M_PI);
+                packet.roll = static_cast<float>(otPacket.roll * 180.0 / M_PI);
+                
+                int writeIdx = mWriteBuffer.load();
+                mPoseBuffers[writeIdx] = packet;
+                
+                int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
+                mWriteBuffer.store(nextBuffer);
+            }
         }
         
         close(sock);
