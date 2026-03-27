@@ -121,11 +121,27 @@ class TransportManager: ObservableObject {
     }
     
     func startUDPServer() {
+        guard udpPort > 0 && udpPort <= 65535 else {
+            connectionStatus = .error("Invalid UDP port: \(udpPort). Port must be between 1 and 65535.")
+            return
+        }
+        
+        guard let port = NWEndpoint.Port(rawValue: udpPort) else {
+            connectionStatus = .error("Failed to create UDP port: \(udpPort)")
+            return
+        }
+        
         do {
             let parameters = NWParameters.udp
             parameters.allowLocalEndpointReuse = true
             
-            listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: udpPort)!)
+            listener = try NWListener(using: parameters, on: port)
+            
+            // Required: set a connection handler even if we don't accept connections
+            listener?.newConnectionHandler = { [weak self] connection in
+                // Just ignore incoming connections - we only send
+                connection.cancel()
+            }
             
             listener?.stateUpdateHandler = { [weak self] state in
                 Task { @MainActor in
@@ -135,9 +151,11 @@ class TransportManager: ObservableObject {
                         self?.updateLocalIP()
                         self?.setupBroadcastConnection()
                     case .failed(let error):
-                        self?.connectionStatus = .error(error.localizedDescription)
+                        self?.connectionStatus = .error("NWListener failed: \(error.localizedDescription)")
                     case .cancelled:
                         self?.connectionStatus = .disconnected
+                    case .waiting(let error):
+                        print("NWListener waiting: \(error)")
                     default:
                         break
                     }
@@ -148,7 +166,7 @@ class TransportManager: ObservableObject {
             connectionStatus = .connecting
             
         } catch {
-            connectionStatus = .error(error.localizedDescription)
+            connectionStatus = .error("Failed to start UDP server: \(error.localizedDescription)")
         }
     }
     
@@ -287,64 +305,48 @@ class TransportManager: ObservableObject {
     }
     
     private func setupBroadcastConnection() {
-        let broadcastAddress = getBroadcastAddress()
+        // Skip broadcast setup - we'll send directly
+        // The X-Plane plugin will receive on port 4242
+        print("UDP setup complete - will broadcast to all addresses")
+    }
+    
+    private func getBroadcastAddress() -> String {
+        // Use simple broadcast to all interfaces
+        return "255.255.255.255"
+    }
+    
+    private func broadcastPacket(_ data: Data) {
+        // Create a new connection for each packet - simpler and more reliable
+        guard let port = NWEndpoint.Port(rawValue: udpPort) else { return }
         
         let endpoint = NWEndpoint.hostPort(
-            host: NWEndpoint.Host(broadcastAddress),
-            port: NWEndpoint.Port(rawValue: udpPort)!
+            host: NWEndpoint.Host("255.255.255.255"),
+            port: port
         )
         
         let params = NWParameters.udp
         params.allowLocalEndpointReuse = true
         
-        broadcastConnection = NWConnection(to: endpoint, using: params)
+        let connection = NWConnection(to: endpoint, using: params)
         
-        broadcastConnection?.stateUpdateHandler = { [weak self] state in
+        connection.stateUpdateHandler = { state in
             switch state {
             case .ready:
-                break
+                connection.send(content: data, completion: .contentProcessed { error in
+                    if let error = error {
+                        print("Send error: \(error)")
+                    }
+                    connection.cancel()
+                })
             case .failed(let error):
-                print("Broadcast connection failed: \(error)")
-                DispatchQueue.main.async {
-                    self?.setupBroadcastConnection()
-                }
-            case .cancelled:
-                break
+                print("Connection failed: \(error)")
+                connection.cancel()
             default:
                 break
             }
         }
         
-        broadcastConnection?.start(queue: .global(qos: .userInitiated))
-    }
-    
-    private func getBroadcastAddress() -> String {
-        let components = localIP.split(separator: ".")
-        guard components.count == 4 else { return "255.255.255.255" }
-        
-        if let last = Int(components[3]) {
-            let broadcast = 255
-            return "\(components[0]).\(components[1]).\(components[2]).\(broadcast)"
-        }
-        
-        return "255.255.255.255"
-    }
-    
-    private func broadcastPacket(_ data: Data) {
-        guard let connection = broadcastConnection else {
-            setupBroadcastConnection()
-            return
-        }
-        
-        guard connection.state == .ready else {
-            return
-        }
-        
-        connection.send(content: data, completion: .contentProcessed { error in
-            if let error = error {
-                print("Broadcast send error: \(error)")
-            }
-        })
+        connection.start(queue: .global(qos: .userInitiated))
     }
     
     private func sendOverPeerTalk(_ data: Data) {

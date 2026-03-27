@@ -7,6 +7,8 @@
 #include <iostream>
 #include <chrono>
 
+#define DEBUG_LOG(msg) { char _buf[512]; snprintf(_buf, sizeof(_buf), "[LidarSightXP] %s\n", msg); XPLMDebugString(_buf); }
+
 LidarSightXP* gPlugin = nullptr;
 
 static const int UDP_PORT = 4242;
@@ -93,7 +95,7 @@ void LidarSightXP::start()
         this
     );
     
-    std::cout << "LidarSight XP started" << std::endl;
+    DEBUG_LOG("Plugin started successfully");
 }
 
 void LidarSightXP::stop()
@@ -103,7 +105,7 @@ void LidarSightXP::stop()
     XPLMUnregisterFlightLoopCallback(flightLoopCallbackStub, this);
     stopNetwork();
     
-    std::cout << "LidarSight XP stopped" << std::endl;
+    DEBUG_LOG("Plugin stopped");
 }
 
 void LidarSightXP::receiveMessage(XPLMPluginID inFromWho, long inMessage, void* inParam)
@@ -206,7 +208,22 @@ void LidarSightXP::registerDatarefs()
 
 void LidarSightXP::registerCommands()
 {
-    // Commands not available in this SDK version - using menu instead
+    mMenu = XPLMCreateMenu("LidarSight XP", NULL, 0, menuHandler, this);
+    
+    XPLMAppendMenuItem(mMenu, "Recenter Head", (void*)1, 0);
+    XPLMAppendMenuItem(mMenu, mIsEnabled ? "Disable Tracking" : "Enable Tracking", (void*)2, 0);
+}
+
+void LidarSightXP::menuHandler(void* inMenuRef, void* inItemRef)
+{
+    LidarSightXP* plugin = static_cast<LidarSightXP*>(inMenuRef);
+    int item = reinterpret_cast<intptr_t>(inItemRef);
+    
+    if (item == 1) {
+        plugin->recenter();
+    } else if (item == 2) {
+        plugin->mIsEnabled = !plugin->mIsEnabled;
+    }
 }
 
 void LidarSightXP::startNetwork()
@@ -214,7 +231,7 @@ void LidarSightXP::startNetwork()
     mNetworkThread = std::thread([this]() {
         int sock = socket(AF_INET, SOCK_DGRAM, 0);
         if (sock < 0) {
-            std::cerr << "Failed to create socket" << std::endl;
+            DEBUG_LOG("Failed to create socket");
             return;
         }
         
@@ -228,12 +245,12 @@ void LidarSightXP::startNetwork()
         serverAddr.sin_port = htons(UDP_PORT);
         
         if (bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-            std::cerr << "Failed to bind socket on port " << UDP_PORT << std::endl;
+            DEBUG_LOG("Failed to bind socket");
             close(sock);
             return;
         }
         
-        std::cout << "Listening on UDP port " << UDP_PORT << std::endl;
+        DEBUG_LOG("Listening on UDP port 4242");
         mIsConnected = true;
         
         char buffer[1024];

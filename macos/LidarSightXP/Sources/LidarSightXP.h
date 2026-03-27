@@ -5,6 +5,7 @@
 #include "XPLMDataAccess.h"
 #include "XPLMProcessing.h"
 #include "XPLMMenus.h"
+#include "XPLMDisplay.h"
 #include <atomic>
 #include <thread>
 #include <mutex>
@@ -53,6 +54,7 @@ private:
     void recenter();
     
     static void recenterCommandHandler(void* inRefcon);
+    static void menuHandler(void* inMenuRef, void* inItemRef);
     
     XPLMDataRef mHeadPosX;
     XPLMDataRef mHeadPosY;
