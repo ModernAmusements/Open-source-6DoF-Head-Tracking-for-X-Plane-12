@@ -296,6 +296,7 @@ struct SettingsView: View {
     @State private var smoothing: Double = 0.6
     @State private var stealthMode: Bool = true
     @State private var selectedMode: TrackingMode = .headOnly
+    @State private var selectedProtocol: ProtocolMode = .openTrack
     @State private var maxAngle: Double = 45.0
     @State private var rangeScale: Double = 0.7
     @State private var eyeSensitivity: Double = 2.5
@@ -400,6 +401,18 @@ struct SettingsView: View {
                 }
                 
                 Section("Connection") {
+                    Picker("Protocol", selection: $selectedProtocol) {
+                        ForEach(ProtocolMode.allCases, id: \.self) { proto in
+                            Text(proto.rawValue)
+                                .tag(proto)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    
+                    Text(selectedProtocol.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
                     Toggle("Stealth Mode", isOn: $stealthMode)
                 }
                 
@@ -447,6 +460,7 @@ struct SettingsView: View {
         smoothing = Double(transportManager.settings.smoothing)
         stealthMode = transportManager.settings.stealthMode
         selectedMode = transportManager.settings.trackingMode
+        selectedProtocol = transportManager.settings.protocolMode
         maxAngle = Double(transportManager.settings.maxAngle)
         rangeScale = Double(transportManager.settings.rangeScale)
         eyeSensitivity = Double(transportManager.settings.eyeSensitivity)
@@ -458,6 +472,7 @@ struct SettingsView: View {
             smoothing: Float(smoothing),
             stealthMode: stealthMode,
             trackingMode: selectedMode,
+            protocolMode: selectedProtocol,
             maxAngle: Float(maxAngle),
             rangeScale: Float(rangeScale),
             eyeSensitivity: Float(eyeSensitivity)

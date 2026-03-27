@@ -194,67 +194,74 @@ class TransportManager: ObservableObject {
         
         packetId += 1
         
-        var packet = HeadPosePacket()
-        packet.packetId = packetId
-        packet.timestampUs = Float(pose.timestamp * 1_000_000)
+        let data: Data
         
-        let useEyeRotation = settings.trackingMode.usesEyeTracking && pose.eyeRotation != nil
-        let eyeWeight: Float = 0.3 // Eyes contribute 30% in head+eyes mode
-        
-        let finalRotation: SIMD3<Float>
-        
-        if useEyeRotation, let eyeRot = pose.eyeRotation {
-            let eyeOffset = SIMD3<Float>(
-                (eyeRot.x - calibrationOffset.rotation.x) * settings.eyeSensitivity,
-                (eyeRot.y - calibrationOffset.rotation.y) * settings.eyeSensitivity,
-                (eyeRot.z - calibrationOffset.rotation.z) * settings.eyeSensitivity
-            )
+        if settings.protocolMode == .openTrack {
+            let opPacket = OpenTrackPacket(from: pose, settings: settings, calibration: calibrationOffset)
+            data = opPacket.toData()
+        } else {
+            var packet = HeadPosePacket()
+            packet.packetId = packetId
+            packet.timestampUs = Float(pose.timestamp * 1_000_000)
             
-            switch settings.trackingMode {
-            case .eyesOnly:
-                finalRotation = eyeOffset
-            case .headAndEyes:
-                let headRot = SIMD3<Float>(
-                    (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
-                    (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
-                    (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
+            let useEyeRotation = settings.trackingMode.usesEyeTracking && pose.eyeRotation != nil
+            let eyeWeight: Float = 0.3
+            
+            let finalRotation: SIMD3<Float>
+            
+            if useEyeRotation, let eyeRot = pose.eyeRotation {
+                let eyeOffset = SIMD3<Float>(
+                    (eyeRot.x - calibrationOffset.rotation.x) * settings.eyeSensitivity,
+                    (eyeRot.y - calibrationOffset.rotation.y) * settings.eyeSensitivity,
+                    (eyeRot.z - calibrationOffset.rotation.z) * settings.eyeSensitivity
                 )
-                finalRotation = SIMD3<Float>(
-                    headRot.x + eyeOffset.x * eyeWeight,
-                    headRot.y + eyeOffset.y * eyeWeight,
-                    headRot.z + eyeOffset.z * eyeWeight
-                )
-            default:
+                
+                switch settings.trackingMode {
+                case .eyesOnly:
+                    finalRotation = eyeOffset
+                case .headAndEyes:
+                    let headRot = SIMD3<Float>(
+                        (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
+                        (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
+                        (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
+                    )
+                    finalRotation = SIMD3<Float>(
+                        headRot.x + eyeOffset.x * eyeWeight,
+                        headRot.y + eyeOffset.y * eyeWeight,
+                        headRot.z + eyeOffset.z * eyeWeight
+                    )
+                default:
+                    finalRotation = SIMD3<Float>(
+                        (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
+                        (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
+                        (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
+                    )
+                }
+            } else {
                 finalRotation = SIMD3<Float>(
                     (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
                     (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
                     (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
                 )
             }
-        } else {
-            finalRotation = SIMD3<Float>(
-                (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
-                (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
-                (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
-            )
+            
+            let rawX = (pose.position.x - calibrationOffset.position.x) * settings.sensitivity
+            let rawY = (pose.position.y - calibrationOffset.position.y) * settings.sensitivity
+            let rawZ = (pose.position.z - calibrationOffset.position.z) * settings.sensitivity
+            
+            packet.x = applyRangeMapping(rawX)
+            packet.y = applyRangeMapping(rawY)
+            packet.z = applyRangeMapping(rawZ)
+            packet.pitch = applyAngleClamp(finalRotation.x)
+            packet.yaw = applyAngleClamp(finalRotation.y)
+            packet.roll = applyAngleClamp(finalRotation.z)
+            
+            let isCalibrated = calibrationOffset != CalibrationOffset()
+            packet.setFlag(.calibrated, isCalibrated)
+            packet.setFlag(.trackingValid, pose.isValid)
+            
+            data = packet.toData()
         }
-        
-        let rawX = (pose.position.x - calibrationOffset.position.x) * settings.sensitivity
-        let rawY = (pose.position.y - calibrationOffset.position.y) * settings.sensitivity
-        let rawZ = (pose.position.z - calibrationOffset.position.z) * settings.sensitivity
-        
-        packet.x = applyRangeMapping(rawX)
-        packet.y = applyRangeMapping(rawY)
-        packet.z = applyRangeMapping(rawZ)
-        packet.pitch = applyAngleClamp(finalRotation.x)
-        packet.yaw = applyAngleClamp(finalRotation.y)
-        packet.roll = applyAngleClamp(finalRotation.z)
-        
-        let isCalibrated = calibrationOffset != CalibrationOffset()
-        packet.setFlag(.calibrated, isCalibrated)
-        packet.setFlag(.trackingValid, pose.isValid)
-        
-        let data = packet.toData()
         
         if isUSBConnected {
             sendOverPeerTalk(data)

@@ -43,6 +43,20 @@ enum TrackingMode: String, Codable, CaseIterable {
     }
 }
 
+enum ProtocolMode: String, Codable, CaseIterable {
+    case custom = "LidarSight"
+    case openTrack = "OpenTrack"
+    
+    var description: String {
+        switch self {
+        case .custom:
+            return "LidarSight protocol (33 bytes)"
+        case .openTrack:
+            return "OpenTrack UDP format (48 bytes)"
+        }
+    }
+}
+
 struct HeadPose: Equatable {
     var position: SIMD3<Float>
     var rotation: SIMD3<Float> // pitch, yaw, roll in degrees
@@ -83,6 +97,7 @@ struct TrackingSettings: Codable, Equatable {
     var smoothing: Float
     var stealthMode: Bool
     var trackingMode: TrackingMode
+    var protocolMode: ProtocolMode
     var maxAngle: Float
     var rangeScale: Float
     var eyeSensitivity: Float // Extra sensitivity for eye tracking (eyes move less than head)
@@ -91,6 +106,7 @@ struct TrackingSettings: Codable, Equatable {
          smoothing: Float = 0.6, 
          stealthMode: Bool = true,
          trackingMode: TrackingMode = .headOnly,
+         protocolMode: ProtocolMode = .openTrack,
          maxAngle: Float = 45.0,
          rangeScale: Float = 0.7,
          eyeSensitivity: Float = 2.5) {
@@ -98,6 +114,7 @@ struct TrackingSettings: Codable, Equatable {
         self.smoothing = smoothing
         self.stealthMode = stealthMode
         self.trackingMode = trackingMode
+        self.protocolMode = protocolMode
         self.maxAngle = maxAngle
         self.rangeScale = rangeScale
         self.eyeSensitivity = eyeSensitivity
