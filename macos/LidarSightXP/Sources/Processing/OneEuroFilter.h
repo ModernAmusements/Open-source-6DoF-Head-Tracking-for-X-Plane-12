@@ -39,7 +39,12 @@ public:
             mFirstTime = false;
             mPrevValue = value;
             mPrevFiltered = value;
+            mPrevDerivative = 0.0;
             return value;
+        }
+        
+        if (dt <= 0.0001) {
+            dt = 0.001;
         }
         
         double e = mMinCutoff + mBeta * std::abs(mPrevDerivative);

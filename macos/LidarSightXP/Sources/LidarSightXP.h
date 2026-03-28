@@ -9,6 +9,7 @@
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <cmath>
 #include "Processing/OneEuroFilter.h"
 
 #pragma pack(push, 1)
@@ -29,6 +30,52 @@ struct OpenTrackPacket {
     double pitch, yaw, roll;
 };
 #pragma pack(pop)
+
+struct AxisConfig {
+    float deadzone;
+    float maxInput;
+    float maxOutput;
+    float curvePower;
+    bool enabled;
+    bool invert;
+    
+    AxisConfig() : deadzone(2.0f), maxInput(30.0f), maxOutput(90.0f), 
+                   curvePower(2.0f), enabled(true), invert(false) {}
+};
+
+struct TrackingConfig {
+    AxisConfig yaw;
+    AxisConfig pitch;
+    AxisConfig roll;
+    float filterMinCutoff;
+    float filterBeta;
+    float filterDCutoff;
+    
+    TrackingConfig() 
+        : filterMinCutoff(1.0f), filterBeta(0.1f), filterDCutoff(1.0f) 
+    {
+        yaw.deadzone = 2.0f;
+        yaw.maxInput = 30.0f;
+        yaw.maxOutput = 90.0f;
+        yaw.curvePower = 2.0f;
+        yaw.enabled = true;
+        yaw.invert = false;
+        
+        pitch.deadzone = 3.0f;
+        pitch.maxInput = 20.0f;
+        pitch.maxOutput = 25.0f;
+        pitch.curvePower = 1.5f;
+        pitch.enabled = true;
+        pitch.invert = false;
+        
+        roll.deadzone = 0.0f;
+        roll.maxInput = 15.0f;
+        roll.maxOutput = 15.0f;
+        roll.curvePower = 1.0f;
+        roll.enabled = false;
+        roll.invert = false;
+    }
+};
 
 class LidarSightXP {
 public:
@@ -53,6 +100,10 @@ private:
     void applyOneEuroFilter();
     void recenter();
     
+    void loadConfig();
+    void saveConfig();
+    float applyCurve(float value, const AxisConfig& config);
+    
     static void menuHandler(void* inMenuRef, void* inItemRef);
     
     XPLMDataRef mHeadPitch;
@@ -73,6 +124,7 @@ private:
     HeadPosePacket mPoseOffset;
     
     OneEuroFilterVector3 mRotationFilter;
+    TrackingConfig mConfig;
     
     double mLastFrameTime;
     
@@ -80,7 +132,6 @@ private:
     bool mInCockpitView;
     bool mIsConnected;
     bool mHasInitialPose;
-    int mFramesSinceLastPacket;
 };
 
 extern LidarSightXP* gPlugin;
