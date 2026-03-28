@@ -130,7 +130,7 @@ private:
     
     bool mIsEnabled;
     bool mInCockpitView;
-    bool mIsConnected;
+    std::atomic<bool> mIsConnected;
     bool mHasInitialPose;
 };
 

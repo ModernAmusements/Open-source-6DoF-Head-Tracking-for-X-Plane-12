@@ -84,9 +84,9 @@ void LidarSightXP::start()
     XPLMGetSystemPath(sysPath);
     snprintf(gConfigPath, sizeof(gConfigPath), "%sLidarSightXP/config.txt", sysPath);
     
-    char mkdirCmd[512];
-    snprintf(mkdirCmd, sizeof(mkdirCmd), "mkdir -p \"%sLidarSightXP\"", sysPath);
-    system(mkdirCmd);
+    char dirPath[512];
+    snprintf(dirPath, sizeof(dirPath), "%sLidarSightXP", sysPath);
+    mkdir(dirPath, 0755);
     
     mRunning = true;
     mLastFrameTime = DEFAULT_DT;
@@ -243,8 +243,11 @@ float LidarSightXP::applyCurve(float value, const AxisConfig& config)
     if (t < 0.0f) t = 0.0f;
     if (t > 1.0f) t = 1.0f;
     
+    float curvePower = config.curvePower;
+    if (curvePower < 0.1f) curvePower = 0.1f;
+    
     float tPowered = t;
-    for (int i = 1; i < (int)config.curvePower; i++) {
+    for (int i = 1; i < (int)(curvePower * 10); i++) {
         tPowered *= t;
     }
     
@@ -361,8 +364,10 @@ void LidarSightXP::registerCommands()
     XPLMAppendMenuItem(yawMenu, mConfig.yaw.invert ? "Un-Invert Yaw" : "Invert Yaw", (void*)11, 0);
     XPLMAppendMenuItem(yawMenu, "Yaw: Increase Deadzone (+)", (void*)12, 0);
     XPLMAppendMenuItem(yawMenu, "Yaw: Decrease Deadzone (-)", (void*)13, 0);
-    XPLMAppendMenuItem(yawMenu, "Yaw: Increase Sensitivity (*)", (void*)14, 0);
-    XPLMAppendMenuItem(yawMenu, "Yaw: Decrease Sensitivity (/)", (void*)15, 0);
+    XPLMAppendMenuItem(yawMenu, "Yaw: More Curve (*)   (less linear)", (void*)14, 0);
+    XPLMAppendMenuItem(yawMenu, "Yaw: Less Curve (/)  (more linear)", (void*)15, 0);
+    XPLMAppendMenuItem(yawMenu, "Yaw: More Range (])", (void*)16, 0);
+    XPLMAppendMenuItem(yawMenu, "Yaw: Less Range ([)", (void*)17, 0);
     
     XPLMMenuID pitchMenu = XPLMCreateMenu("Pitch Settings", mMenu, 0, menuHandler, this);
     XPLMAppendMenuItem(pitchMenu, mConfig.pitch.enabled ? "Disable Pitch" : "Enable Pitch", (void*)20, 0);
@@ -397,8 +402,12 @@ void LidarSightXP::menuHandler(void* inMenuRef, void* inItemRef)
     } else if (item == 13) {
         plugin->mConfig.yaw.deadzone = std::max(plugin->mConfig.yaw.deadzone - 1.0f, 0.0f);
     } else if (item == 14) {
-        plugin->mConfig.yaw.maxOutput = std::min(plugin->mConfig.yaw.maxOutput + 10.0f, 180.0f);
+        plugin->mConfig.yaw.curvePower = std::min(plugin->mConfig.yaw.curvePower + 0.2f, 4.0f);
     } else if (item == 15) {
+        plugin->mConfig.yaw.curvePower = std::max(plugin->mConfig.yaw.curvePower - 0.2f, 0.5f);
+    } else if (item == 16) {
+        plugin->mConfig.yaw.maxOutput = std::min(plugin->mConfig.yaw.maxOutput + 10.0f, 180.0f);
+    } else if (item == 17) {
         plugin->mConfig.yaw.maxOutput = std::max(plugin->mConfig.yaw.maxOutput - 10.0f, 30.0f);
     } else if (item == 20) {
         plugin->mConfig.pitch.enabled = !plugin->mConfig.pitch.enabled;
@@ -476,12 +485,6 @@ void LidarSightXP::startNetwork()
             ssize_t n = recvfrom(sock, buffer, sizeof(buffer), 0, 
                                  (sockaddr*)&clientAddr, &clientLen);
             
-            if (n > 0) {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "UDP recv: %zd bytes from %s", n, inet_ntoa(clientAddr.sin_addr));
-                DEBUG_LOG(buf);
-            }
-            
             if (n == PACKET_SIZE) {
                 HeadPosePacket packet;
                 memcpy(&packet, buffer, PACKET_SIZE);
@@ -491,8 +494,6 @@ void LidarSightXP::startNetwork()
                 
                 int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
                 mWriteBuffer.store(nextBuffer);
-                
-                DEBUG_LOG("Received LidarSight packet");
             }
             else if (n == OPENTRACK_PACKET_SIZE) {
                 OpenTrackPacket otPacket;
@@ -514,16 +515,6 @@ void LidarSightXP::startNetwork()
                 
                 int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
                 mWriteBuffer.store(nextBuffer);
-                
-                char buf[128];
-                snprintf(buf, sizeof(buf), "Received OpenTrack: pitch=%.2f yaw=%.2f roll=%.2f", 
-                         packet.pitch, packet.yaw, packet.roll);
-                DEBUG_LOG(buf);
-            }
-            else if (n > 0) {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "Unknown packet size: %zd", n);
-                DEBUG_LOG(buf);
             }
         }
         
