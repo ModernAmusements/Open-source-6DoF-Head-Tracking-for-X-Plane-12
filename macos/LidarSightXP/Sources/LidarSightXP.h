@@ -53,18 +53,13 @@ private:
     void applyOneEuroFilter();
     void recenter();
     
-    static void recenterCommandHandler(void* inRefcon);
     static void menuHandler(void* inMenuRef, void* inItemRef);
     
-    XPLMDataRef mHeadPosX;
-    XPLMDataRef mHeadPosY;
-    XPLMDataRef mHeadPosZ;
     XPLMDataRef mHeadPitch;
     XPLMDataRef mHeadYaw;
     XPLMDataRef mHeadRoll;
     XPLMDataRef mViewType;
     
-    int mRecenterCommand;
     XPLMMenuID mMenu;
     
     std::atomic<bool> mRunning;
@@ -74,10 +69,9 @@ private:
     static constexpr int BUFFER_COUNT = 3;
     HeadPosePacket mPoseBuffers[BUFFER_COUNT];
     std::atomic<int> mWriteBuffer;
-    std::atomic<int> mReadBuffer;
     HeadPosePacket mFilteredPose;
+    HeadPosePacket mPoseOffset;
     
-    OneEuroFilterVector3 mPositionFilter;
     OneEuroFilterVector3 mRotationFilter;
     
     double mLastFrameTime;
@@ -85,6 +79,8 @@ private:
     bool mIsEnabled;
     bool mInCockpitView;
     bool mIsConnected;
+    bool mHasInitialPose;
+    int mFramesSinceLastPacket;
 };
 
 extern LidarSightXP* gPlugin;

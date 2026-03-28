@@ -4,8 +4,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <iostream>
-#include <chrono>
 
 #define DEBUG_LOG(msg) { char _buf[512]; snprintf(_buf, sizeof(_buf), "[LidarSightXP] %s\n", msg); XPLMDebugString(_buf); }
 
@@ -53,25 +51,24 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, long inMessage, vo
 }
 
 LidarSightXP::LidarSightXP()
-    : mHeadPosX(nullptr)
-    , mHeadPosY(nullptr)
-    , mHeadPosZ(nullptr)
+    : mHeadPitch(nullptr)
+    , mHeadYaw(nullptr)
     , mHeadRoll(nullptr)
     , mViewType(nullptr)
-    , mRecenterCommand(0)
     , mMenu(nullptr)
     , mRunning(false)
     , mWriteBuffer(0)
-    , mReadBuffer(0)
     , mLastFrameTime(0.0)
     , mIsEnabled(true)
     , mInCockpitView(false)
     , mIsConnected(false)
+    , mHasInitialPose(false)
+    , mFramesSinceLastPacket(0)
 {
     memset(mPoseBuffers, 0, sizeof(mPoseBuffers));
     memset(&mFilteredPose, 0, sizeof(HeadPosePacket));
+    memset(&mPoseOffset, 0, sizeof(HeadPosePacket));
     
-    mPositionFilter.setParameters(30.0, 0.6, 25.0);
     mRotationFilter.setParameters(30.0, 0.6, 25.0);
 }
 
@@ -120,6 +117,7 @@ float LidarSightXP::flightLoopCallbackStub(
 {
     LidarSightXP* plugin = static_cast<LidarSightXP*>(inRefcon);
     if (plugin) {
+        plugin->mLastFrameTime = inElapsedTimeSinceLastCall;
         plugin->flightLoopCallback();
     }
     return -1.0f;
@@ -137,13 +135,26 @@ void LidarSightXP::flightLoopCallback()
         return;
     }
     
+    if (mFramesSinceLastPacket > 120) {
+        mHasInitialPose = false;
+    }
+    mFramesSinceLastPacket++;
+    
     applyOneEuroFilter();
     
-    // Only apply rotation - position is handled by X-Plane automatically
-    // Rotation (negate pitch to fix inversion)
-    XPLMSetDataf(mHeadPitch, -mFilteredPose.pitch);
-    XPLMSetDataf(mHeadYaw, mFilteredPose.yaw);
-    XPLMSetDataf(mHeadRoll, mFilteredPose.roll);
+    auto normalizeAngle = [](double angle) {
+        while (angle > 180.0) angle -= 360.0;
+        while (angle < -180.0) angle += 360.0;
+        return angle;
+    };
+    
+    float offsetPitch = normalizeAngle(mFilteredPose.pitch - mPoseOffset.pitch);
+    float offsetYaw = normalizeAngle(mFilteredPose.yaw - mPoseOffset.yaw);
+    float offsetRoll = normalizeAngle(mFilteredPose.roll - mPoseOffset.roll);
+    
+    XPLMSetDataf(mHeadPitch, -offsetPitch);
+    XPLMSetDataf(mHeadYaw, offsetYaw);
+    XPLMSetDataf(mHeadRoll, offsetRoll);
 }
 
 void LidarSightXP::checkViewType()
@@ -176,45 +187,61 @@ void LidarSightXP::applyOneEuroFilter()
         dt = DEFAULT_DT;
     }
     
-    double x = pose.x, y = pose.y, z = pose.z;
     double pitch = pose.pitch, yaw = pose.yaw, roll = pose.roll;
     
-    mPositionFilter.filter(x, y, z, dt);
+    auto isValid = [](double v) { return std::isfinite(v) && std::abs(v) < 10000.0; };
+    if (!isValid(pitch) || !isValid(yaw) || !isValid(roll)) {
+        return;
+    }
+    
+    auto normalizeAngle = [](double angle) {
+        while (angle > 180.0) angle -= 360.0;
+        while (angle < -180.0) angle += 360.0;
+        return angle;
+    };
+    
+    pitch = normalizeAngle(pitch);
+    yaw = normalizeAngle(yaw);
+    roll = normalizeAngle(roll);
+    
     mRotationFilter.filter(pitch, yaw, roll, dt);
     
-    mFilteredPose.x = static_cast<float>(x);
-    mFilteredPose.y = static_cast<float>(y);
-    mFilteredPose.z = static_cast<float>(z);
+    constexpr float MAX_DELTA = 30.0f;
+    auto clampDelta = [](float current, float target, float maxDelta) {
+        float delta = target - current;
+        if (delta > maxDelta) return current + maxDelta;
+        if (delta < -maxDelta) return current - maxDelta;
+        return target;
+    };
+    
+    pitch = clampDelta(mFilteredPose.pitch, static_cast<float>(pitch), MAX_DELTA);
+    yaw = clampDelta(mFilteredPose.yaw, static_cast<float>(yaw), MAX_DELTA);
+    roll = clampDelta(mFilteredPose.roll, static_cast<float>(roll), MAX_DELTA);
+    
     mFilteredPose.pitch = static_cast<float>(pitch);
     mFilteredPose.yaw = static_cast<float>(yaw);
     mFilteredPose.roll = static_cast<float>(roll);
     mFilteredPose.flags = pose.flags;
+    
+    mFramesSinceLastPacket = 0;
+    
+    if (!mHasInitialPose) {
+        mHasInitialPose = true;
+        mPoseOffset = mFilteredPose;
+        DEBUG_LOG("Auto-zeroed on first pose");
+    }
 }
 
 void LidarSightXP::recenter()
 {
-    for (int i = 0; i < BUFFER_COUNT; i++) {
-        mPoseBuffers[i].x = 0.0f;
-        mPoseBuffers[i].y = 0.0f;
-        mPoseBuffers[i].z = 0.0f;
-        mPoseBuffers[i].pitch = 0.0f;
-        mPoseBuffers[i].yaw = 0.0f;
-        mPoseBuffers[i].roll = 0.0f;
-    }
-    
-    mFilteredPose.x = 0.0f;
-    mFilteredPose.y = 0.0f;
-    mFilteredPose.z = 0.0f;
-    mFilteredPose.pitch = 0.0f;
-    mFilteredPose.yaw = 0.0f;
-    mFilteredPose.roll = 0.0f;
+    mHasInitialPose = true;
+    mPoseOffset.pitch = mFilteredPose.pitch;
+    mPoseOffset.yaw = mFilteredPose.yaw;
+    mPoseOffset.roll = mFilteredPose.roll;
 }
 
 void LidarSightXP::registerDatarefs()
 {
-    mHeadPosX = XPLMFindDataRef("sim/graphics/view/pilots_head_x");
-    mHeadPosY = XPLMFindDataRef("sim/graphics/view/pilots_head_y");
-    mHeadPosZ = XPLMFindDataRef("sim/graphics/view/pilots_head_z");
     mHeadPitch = XPLMFindDataRef("sim/graphics/view/pilots_head_the");
     mHeadYaw = XPLMFindDataRef("sim/graphics/view/pilots_head_psi");
     mHeadRoll = XPLMFindDataRef("sim/graphics/view/pilots_head_phi");
