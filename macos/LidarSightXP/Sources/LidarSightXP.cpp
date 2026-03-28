@@ -143,7 +143,7 @@ void LidarSightXP::flightLoopCallback()
         return;
     }
     
-    if (!mIsConnected) {
+    if (!mIsConnected.load()) {
         return;
     }
     
@@ -227,6 +227,7 @@ void LidarSightXP::recenter()
     mPoseOffset.pitch = mFilteredPose.pitch;
     mPoseOffset.yaw = mFilteredPose.yaw;
     mPoseOffset.roll = mFilteredPose.roll;
+    mRotationFilter.setParameters(mConfig.filterMinCutoff, mConfig.filterBeta, mConfig.filterDCutoff);
 }
 
 float LidarSightXP::applyCurve(float value, const AxisConfig& config)
@@ -463,7 +464,7 @@ void LidarSightXP::startNetwork()
         }
         
         DEBUG_LOG("Listening on UDP port 4242");
-        mIsConnected = true;
+        mIsConnected.store(true);
         
         char buffer[1024];
         sockaddr_in clientAddr;
@@ -518,6 +519,9 @@ void LidarSightXP::startNetwork()
             }
         }
         
+        DEBUG_LOG("Network thread exiting");
+        mIsConnected.store(false);
+        
         close(sock);
     });
 }
@@ -527,5 +531,5 @@ void LidarSightXP::stopNetwork()
     if (mNetworkThread.joinable()) {
         mNetworkThread.join();
     }
-    mIsConnected = false;
+    mIsConnected.store(false);
 }
