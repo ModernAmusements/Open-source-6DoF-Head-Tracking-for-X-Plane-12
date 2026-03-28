@@ -6,6 +6,7 @@
 #include "XPLMProcessing.h"
 #include "XPLMMenus.h"
 #include "XPLMDisplay.h"
+#include "XPLMUtilities.h"
 #include <atomic>
 #include <thread>
 #include <mutex>
@@ -115,7 +116,6 @@ private:
     
     std::atomic<bool> mRunning;
     std::thread mNetworkThread;
-    std::mutex mPoseMutex;
     
     static constexpr int BUFFER_COUNT = 3;
     HeadPosePacket mPoseBuffers[BUFFER_COUNT];

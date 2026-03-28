@@ -6,10 +6,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #define DEBUG_LOG(msg) { char _buf[512]; snprintf(_buf, sizeof(_buf), "[LidarSightXP] %s\n", msg); XPLMDebugString(_buf); }
 
 LidarSightXP* gPlugin = nullptr;
+static char gConfigPath[512] = {0};
 
 static const int UDP_PORT = 4242;
 static const int COCKPIT_VIEW_TYPE = 1026;
@@ -69,8 +71,6 @@ LidarSightXP::LidarSightXP()
     memset(mPoseBuffers, 0, sizeof(mPoseBuffers));
     memset(&mFilteredPose, 0, sizeof(HeadPosePacket));
     memset(&mPoseOffset, 0, sizeof(HeadPosePacket));
-    
-    mRotationFilter.setParameters(1.0, 0.1, 1.0);
 }
 
 LidarSightXP::~LidarSightXP()
@@ -80,6 +80,14 @@ LidarSightXP::~LidarSightXP()
 
 void LidarSightXP::start()
 {
+    char sysPath[512];
+    XPLMGetSystemPath(sysPath);
+    snprintf(gConfigPath, sizeof(gConfigPath), "%sLidarSightXP/config.txt", sysPath);
+    
+    char mkdirCmd[512];
+    snprintf(mkdirCmd, sizeof(mkdirCmd), "mkdir -p \"%sLidarSightXP\"", sysPath);
+    system(mkdirCmd);
+    
     mRunning = true;
     mLastFrameTime = DEFAULT_DT;
     
@@ -136,6 +144,10 @@ void LidarSightXP::flightLoopCallback()
     }
     
     if (!mIsConnected) {
+        return;
+    }
+    
+    if (!mHeadPitch || !mHeadYaw || !mHeadRoll) {
         return;
     }
     
@@ -243,9 +255,12 @@ float LidarSightXP::applyCurve(float value, const AxisConfig& config)
 
 void LidarSightXP::loadConfig()
 {
-    system("mkdir -p \"/Users/modernamusmenet/Library/Application Support/X-Plane 12/LidarSightXP\"");
+    if (gConfigPath[0] == 0) {
+        DEBUG_LOG("Config path not initialized");
+        return;
+    }
     
-    FILE* f = fopen("/Users/modernamusmenet/Library/Application Support/X-Plane 12/LidarSightXP/config.txt", "r");
+    FILE* f = fopen(gConfigPath, "r");
     if (!f) {
         DEBUG_LOG("No config file, using defaults");
         return;
@@ -286,7 +301,12 @@ void LidarSightXP::loadConfig()
 
 void LidarSightXP::saveConfig()
 {
-    FILE* f = fopen("/Users/modernamusmenet/Library/Application Support/X-Plane 12/LidarSightXP/config.txt", "w");
+    if (gConfigPath[0] == 0) {
+        DEBUG_LOG("Config path not initialized");
+        return;
+    }
+    
+    FILE* f = fopen(gConfigPath, "w");
     if (!f) {
         DEBUG_LOG("Failed to save config");
         return;
