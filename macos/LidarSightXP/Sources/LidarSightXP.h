@@ -59,6 +59,8 @@ private:
     XPLMDataRef mHeadPosX;
     XPLMDataRef mHeadPosY;
     XPLMDataRef mHeadPosZ;
+    XPLMDataRef mHeadPitch;
+    XPLMDataRef mHeadYaw;
     XPLMDataRef mHeadRoll;
     XPLMDataRef mViewType;
     

@@ -12,7 +12,7 @@
 LidarSightXP* gPlugin = nullptr;
 
 static const int UDP_PORT = 4242;
-static const int COCKPIT_VIEW_TYPE = 1017;
+static const int COCKPIT_VIEW_TYPE = 1026;
 static const double DEFAULT_DT = 1.0 / 60.0;
 
 PLUGIN_API int XPluginStart(char* outName, char* outSignature, char* outDescription)
@@ -129,7 +129,11 @@ void LidarSightXP::flightLoopCallback()
 {
     checkViewType();
     
-    if (!mIsEnabled || !mInCockpitView || !mIsConnected) {
+    if (!mIsEnabled || !mInCockpitView) {
+        return;
+    }
+    
+    if (!mIsConnected) {
         return;
     }
     
@@ -138,6 +142,8 @@ void LidarSightXP::flightLoopCallback()
     XPLMSetDataf(mHeadPosX, mFilteredPose.x);
     XPLMSetDataf(mHeadPosY, mFilteredPose.y);
     XPLMSetDataf(mHeadPosZ, mFilteredPose.z);
+    XPLMSetDataf(mHeadPitch, mFilteredPose.pitch);
+    XPLMSetDataf(mHeadYaw, mFilteredPose.yaw);
     XPLMSetDataf(mHeadRoll, mFilteredPose.roll);
 }
 
@@ -146,6 +152,14 @@ void LidarSightXP::checkViewType()
     if (mViewType != nullptr) {
         int viewType = XPLMGetDatai(mViewType);
         mInCockpitView = (viewType == COCKPIT_VIEW_TYPE);
+        
+        static int lastViewType = -1;
+        if (viewType != lastViewType) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "View type: %d (cockpit=%d)", viewType, mInCockpitView);
+            DEBUG_LOG(buf);
+            lastViewType = viewType;
+        }
     }
 }
 
@@ -202,6 +216,8 @@ void LidarSightXP::registerDatarefs()
     mHeadPosX = XPLMFindDataRef("sim/aircraft/view/acf_peX");
     mHeadPosY = XPLMFindDataRef("sim/aircraft/view/acf_peY");
     mHeadPosZ = XPLMFindDataRef("sim/aircraft/view/acf_peZ");
+    mHeadPitch = XPLMFindDataRef("sim/graphics/view/pilots_head_the");
+    mHeadYaw = XPLMFindDataRef("sim/graphics/view/pilots_head_psi");
     mHeadRoll = XPLMFindDataRef("sim/graphics/view/pilots_head_phi");
     mViewType = XPLMFindDataRef("sim/graphics/view/view_type");
 }
@@ -238,6 +254,10 @@ void LidarSightXP::startNetwork()
         int reuse = 1;
         setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
         
+        // Allow broadcast
+        int broadcast = 1;
+        setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+        
         sockaddr_in serverAddr;
         memset(&serverAddr, 0, sizeof(serverAddr));
         serverAddr.sin_family = AF_INET;
@@ -273,6 +293,12 @@ void LidarSightXP::startNetwork()
             ssize_t n = recvfrom(sock, buffer, sizeof(buffer), 0, 
                                  (sockaddr*)&clientAddr, &clientLen);
             
+            if (n > 0) {
+                char buf[64];
+                snprintf(buf, sizeof(buf), "UDP recv: %zd bytes from %s", n, inet_ntoa(clientAddr.sin_addr));
+                DEBUG_LOG(buf);
+            }
+            
             if (n == PACKET_SIZE) {
                 HeadPosePacket packet;
                 memcpy(&packet, buffer, PACKET_SIZE);
@@ -282,6 +308,8 @@ void LidarSightXP::startNetwork()
                 
                 int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
                 mWriteBuffer.store(nextBuffer);
+                
+                DEBUG_LOG("Received LidarSight packet");
             }
             else if (n == OPENTRACK_PACKET_SIZE) {
                 OpenTrackPacket otPacket;
@@ -303,6 +331,16 @@ void LidarSightXP::startNetwork()
                 
                 int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
                 mWriteBuffer.store(nextBuffer);
+                
+                char buf[128];
+                snprintf(buf, sizeof(buf), "Received OpenTrack: pitch=%.2f yaw=%.2f roll=%.2f", 
+                         packet.pitch, packet.yaw, packet.roll);
+                DEBUG_LOG(buf);
+            }
+            else if (n > 0) {
+                char buf[64];
+                snprintf(buf, sizeof(buf), "Unknown packet size: %zd", n);
+                DEBUG_LOG(buf);
             }
         }
         

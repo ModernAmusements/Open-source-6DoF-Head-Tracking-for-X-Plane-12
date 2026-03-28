@@ -100,7 +100,8 @@ struct TrackingSettings: Codable, Equatable {
     var protocolMode: ProtocolMode
     var maxAngle: Float
     var rangeScale: Float
-    var eyeSensitivity: Float // Extra sensitivity for eye tracking (eyes move less than head)
+    var eyeSensitivity: Float
+    var targetIP: String
     
     init(sensitivity: Float = 1.0, 
          smoothing: Float = 0.6, 
@@ -109,7 +110,8 @@ struct TrackingSettings: Codable, Equatable {
          protocolMode: ProtocolMode = .openTrack,
          maxAngle: Float = 45.0,
          rangeScale: Float = 0.7,
-         eyeSensitivity: Float = 2.5) {
+         eyeSensitivity: Float = 2.5,
+         targetIP: String = "192.168.0.239") {
         self.sensitivity = sensitivity
         self.smoothing = smoothing
         self.stealthMode = stealthMode
@@ -118,6 +120,7 @@ struct TrackingSettings: Codable, Equatable {
         self.maxAngle = maxAngle
         self.rangeScale = rangeScale
         self.eyeSensitivity = eyeSensitivity
+        self.targetIP = targetIP
     }
     
     static let `default` = TrackingSettings()

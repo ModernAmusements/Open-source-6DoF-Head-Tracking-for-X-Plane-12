@@ -316,11 +316,19 @@ class TransportManager: ObservableObject {
     }
     
     private func broadcastPacket(_ data: Data) {
-        // Create a new connection for each packet - simpler and more reliable
+        // Send to both broadcast and direct Mac IP for reliability
+        let targets = ["255.255.255.255", settings.targetIP]
+        
+        for targetIP in targets {
+            sendToTarget(data, host: targetIP)
+        }
+    }
+    
+    private func sendToTarget(_ data: Data, host: String) {
         guard let port = NWEndpoint.Port(rawValue: udpPort) else { return }
         
         let endpoint = NWEndpoint.hostPort(
-            host: NWEndpoint.Host("255.255.255.255"),
+            host: NWEndpoint.Host(host),
             port: port
         )
         
