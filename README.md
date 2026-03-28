@@ -139,12 +139,36 @@ If head tracking drifts over time:
 
 ### Data Flow
 
-```
-┌─────────────┐     WiFi UDP     ┌─────────────┐    Datarefs    ┌─────────────┐
-│  iPhone     │◄────────────────►│   Mac        │◄──────────────►│  X-Plane 12 │
-│  (Face      │   255.255.255.255│  (Plugin)   │  acf_peX/Y/Z   │             │
-│  Tracking)  │   port 4242      │  C++/SDK4   │                │             │
-└─────────────┘                  └─────────────┘                └─────────────┘
+```mermaid
+flowchart TB
+    subgraph iOS["iPhone (iOS App)"]
+        A[ARKit Face Tracking] --> B[Face Anchor Extractor]
+        B --> C[Transform Converter]
+        C --> D{Settings}
+        D -->|Calibration| E[Calibration Manager]
+        D -->|Protocol| F[LidarSight Protocol]
+        D -->|Protocol| G[OpenTrack Protocol]
+        E --> F
+        E --> G
+        F --> H[UDP Broadcast]
+        G --> H
+    end
+
+    subgraph Mac["Mac (X-Plane Plugin)"]
+        I[UDP Server :4242] --> J[One Euro Filter]
+        J --> K[Auto-Zero on First Pose]
+        K --> L[Non-Linear Curve Mapping]
+        L --> M[Delta Clamping]
+        M --> N[Dataref Writer]
+    end
+
+    H -->|WiFi UDP 255.255.255.255| I
+    N -->|sim/aircraft/view/acf_peX/Y/Z| O[X-Plane 12]
+    N -->|sim/graphics/view/pilots_head_phi| O
+
+    style H fill:#f9f,color:#333
+    style I fill:#f9f,color:#333
+    style N fill:#9f9,color:#333
 ```
 
 ### Components
