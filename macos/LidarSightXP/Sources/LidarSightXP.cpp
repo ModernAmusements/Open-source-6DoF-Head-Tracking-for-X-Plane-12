@@ -139,10 +139,9 @@ void LidarSightXP::flightLoopCallback()
     
     applyOneEuroFilter();
     
-    XPLMSetDataf(mHeadPosX, mFilteredPose.x);
-    XPLMSetDataf(mHeadPosY, mFilteredPose.y);
-    XPLMSetDataf(mHeadPosZ, mFilteredPose.z);
-    XPLMSetDataf(mHeadPitch, mFilteredPose.pitch);
+    // Only apply rotation - position is handled by X-Plane automatically
+    // Rotation (negate pitch to fix inversion)
+    XPLMSetDataf(mHeadPitch, -mFilteredPose.pitch);
     XPLMSetDataf(mHeadYaw, mFilteredPose.yaw);
     XPLMSetDataf(mHeadRoll, mFilteredPose.roll);
 }
@@ -213,9 +212,9 @@ void LidarSightXP::recenter()
 
 void LidarSightXP::registerDatarefs()
 {
-    mHeadPosX = XPLMFindDataRef("sim/aircraft/view/acf_peX");
-    mHeadPosY = XPLMFindDataRef("sim/aircraft/view/acf_peY");
-    mHeadPosZ = XPLMFindDataRef("sim/aircraft/view/acf_peZ");
+    mHeadPosX = XPLMFindDataRef("sim/graphics/view/pilots_head_x");
+    mHeadPosY = XPLMFindDataRef("sim/graphics/view/pilots_head_y");
+    mHeadPosZ = XPLMFindDataRef("sim/graphics/view/pilots_head_z");
     mHeadPitch = XPLMFindDataRef("sim/graphics/view/pilots_head_the");
     mHeadYaw = XPLMFindDataRef("sim/graphics/view/pilots_head_psi");
     mHeadRoll = XPLMFindDataRef("sim/graphics/view/pilots_head_phi");

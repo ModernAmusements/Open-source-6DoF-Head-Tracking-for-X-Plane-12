@@ -102,11 +102,19 @@ struct OpenTrackPacket {
                 )
             }
         } else {
-            finalRotation = SIMD3<Float>(
-                (pose.rotation.x - calibration.rotation.x) * settings.sensitivity,
-                (pose.rotation.y - calibration.rotation.y) * settings.sensitivity,
-                (pose.rotation.z - calibration.rotation.z) * settings.sensitivity
-            )
+            // Normalize angles to prevent wrapping issues
+            let normalizeAngle: (Float) -> Float = { angle in
+                var a = angle.truncatingRemainder(dividingBy: 360)
+                if a > 180 { a -= 360 }
+                if a < -180 { a += 360 }
+                return a
+            }
+            
+            let rawPitch = normalizeAngle(pose.rotation.x - calibration.rotation.x) * settings.sensitivity
+            let rawYaw = normalizeAngle(pose.rotation.y - calibration.rotation.y) * settings.sensitivity
+            let rawRoll = normalizeAngle(pose.rotation.z - calibration.rotation.z) * settings.sensitivity
+            
+            finalRotation = SIMD3<Float>(rawPitch, rawYaw, rawRoll)
         }
         
         let rawX = (pose.position.x - calibration.position.x) * settings.sensitivity

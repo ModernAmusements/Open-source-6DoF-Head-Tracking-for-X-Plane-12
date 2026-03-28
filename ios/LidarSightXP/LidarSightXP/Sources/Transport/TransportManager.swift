@@ -121,53 +121,9 @@ class TransportManager: ObservableObject {
     }
     
     func startUDPServer() {
-        guard udpPort > 0 && udpPort <= 65535 else {
-            connectionStatus = .error("Invalid UDP port: \(udpPort). Port must be between 1 and 65535.")
-            return
-        }
-        
-        guard let port = NWEndpoint.Port(rawValue: udpPort) else {
-            connectionStatus = .error("Failed to create UDP port: \(udpPort)")
-            return
-        }
-        
-        do {
-            let parameters = NWParameters.udp
-            parameters.allowLocalEndpointReuse = true
-            
-            listener = try NWListener(using: parameters, on: port)
-            
-            // Required: set a connection handler even if we don't accept connections
-            listener?.newConnectionHandler = { [weak self] connection in
-                // Just ignore incoming connections - we only send
-                connection.cancel()
-            }
-            
-            listener?.stateUpdateHandler = { [weak self] state in
-                Task { @MainActor in
-                    switch state {
-                    case .ready:
-                        self?.connectionStatus = .connected
-                        self?.updateLocalIP()
-                        self?.setupBroadcastConnection()
-                    case .failed(let error):
-                        self?.connectionStatus = .error("NWListener failed: \(error.localizedDescription)")
-                    case .cancelled:
-                        self?.connectionStatus = .disconnected
-                    case .waiting(let error):
-                        print("NWListener waiting: \(error)")
-                    default:
-                        break
-                    }
-                }
-            }
-            
-            listener?.start(queue: .global(qos: .userInitiated))
-            connectionStatus = .connecting
-            
-        } catch {
-            connectionStatus = .error("Failed to start UDP server: \(error.localizedDescription)")
-        }
+        connectionStatus = .connected
+        updateLocalIP()
+        setupBroadcastConnection()
     }
     
     func stopUDPServer() {

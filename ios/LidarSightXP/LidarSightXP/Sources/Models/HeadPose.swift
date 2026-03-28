@@ -103,14 +103,14 @@ struct TrackingSettings: Codable, Equatable {
     var eyeSensitivity: Float
     var targetIP: String
     
-    init(sensitivity: Float = 1.0, 
-         smoothing: Float = 0.6, 
+    init(sensitivity: Float = 3.0, 
+         smoothing: Float = 0.5, 
          stealthMode: Bool = true,
          trackingMode: TrackingMode = .headOnly,
          protocolMode: ProtocolMode = .openTrack,
-         maxAngle: Float = 45.0,
-         rangeScale: Float = 0.7,
-         eyeSensitivity: Float = 2.5,
+         maxAngle: Float = 90.0,
+         rangeScale: Float = 0.5,
+         eyeSensitivity: Float = 3.0,
          targetIP: String = "192.168.0.239") {
         self.sensitivity = sensitivity
         self.smoothing = smoothing
