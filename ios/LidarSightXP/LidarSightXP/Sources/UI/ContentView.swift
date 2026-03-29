@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var trackingManager: ARTrackingManager
     @EnvironmentObject var transportManager: TransportManager
     @EnvironmentObject var calibrationManager: CalibrationManager
+    @EnvironmentObject var flightDataManager: FlightDataManager
     
     @State private var showSettings = false
     @State private var opacity: Double = 1.0
@@ -16,9 +17,8 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            ARSceneView()
+            Color.black
                 .ignoresSafeArea()
-                .opacity(0.4)
             
             VStack {
                 HStack {
@@ -31,7 +31,13 @@ struct ContentView: View {
                 Spacer()
                 
                 if trackingManager.isTracking {
-                    TrackingOverlayView()
+                    HeadIconOverlay()
+                        .environmentObject(trackingManager)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    
+                    FlightDataPanel()
+                        .environmentObject(flightDataManager)
+                        .padding(.bottom, 20)
                 } else {
                     StartButtonView()
                 }

@@ -19,12 +19,19 @@ class ARTrackingManager: NSObject, ObservableObject {
     
     private var transportManager: TransportManager?
     private var calibrationManager: CalibrationManager?
+    private var thermalObserver: NSObjectProtocol?
     
     var onPoseUpdate: ((HeadPose) -> Void)?
     
     override init() {
         super.init()
         setupThermalMonitoring()
+    }
+    
+    deinit {
+        if let observer = thermalObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
     
     func setTransportManager(_ manager: TransportManager) {
@@ -36,7 +43,7 @@ class ARTrackingManager: NSObject, ObservableObject {
     }
     
     private func setupThermalMonitoring() {
-        NotificationCenter.default.addObserver(
+        thermalObserver = NotificationCenter.default.addObserver(
             forName: ProcessInfo.thermalStateDidChangeNotification,
             object: nil,
             queue: .main
@@ -130,9 +137,13 @@ class ARTrackingManager: NSObject, ObservableObject {
     
     func stopTracking() {
         session?.pause()
+        session?.delegate = nil
         session = nil
+        faceConfiguration = nil
+        worldConfiguration = nil
         isTracking = false
         isFaceDetected = false
+        currentPose = HeadPose(isValid: false)
     }
     
     private func processFaceAnchor(_ anchor: ARFaceAnchor) {

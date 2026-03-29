@@ -98,6 +98,7 @@ void LidarSightXP::start()
     registerDatarefs();
     registerCommands();
     startNetwork();
+    startFlightData();
     
     XPLMRegisterFlightLoopCallback(
         flightLoopCallbackStub,
@@ -368,6 +369,13 @@ void LidarSightXP::registerDatarefs()
     mHeadYaw = XPLMFindDataRef("sim/graphics/view/pilots_head_psi");
     mHeadRoll = XPLMFindDataRef("sim/graphics/view/pilots_head_phi");
     mViewType = XPLMFindDataRef("sim/graphics/view/view_type");
+    
+    mAirspeed = XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed");
+    mAltitude = XPLMFindDataRef("sim/flightmodel/position/elevation");
+    mHeading = XPLMFindDataRef("sim/flightmodel/position/psi");
+    mPitch = XPLMFindDataRef("sim/flightmodel/position/theta");
+    mRoll = XPLMFindDataRef("sim/flightmodel/position/phi");
+    mVerticalSpeed = XPLMFindDataRef("sim/flightmodel/position/vsi");
 }
 
 void LidarSightXP::registerCommands()
@@ -567,4 +575,64 @@ void LidarSightXP::stopNetwork()
         mNetworkThread.join();
     }
     mIsConnected.store(false);
+}
+
+void LidarSightXP::startFlightData()
+{
+    mFlightDataSock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (mFlightDataSock < 0) {
+        DEBUG_LOG("Failed to create flight data socket");
+        return;
+    }
+    
+    int broadcast = 1;
+    setsockopt(mFlightDataSock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+    
+    mFlightDataThread = std::thread([this]() {
+        while (mRunning) {
+            sendFlightData();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        
+        if (mFlightDataSock >= 0) {
+            close(mFlightDataSock);
+            mFlightDataSock = -1;
+        }
+        
+        DEBUG_LOG("Flight data thread exiting");
+    });
+    
+    DEBUG_LOG("Flight data thread started");
+}
+
+void LidarSightXP::sendFlightData()
+{
+    if (mFlightDataSock < 0) return;
+    
+    FlightDataPacket packet;
+    memset(&packet, 0, sizeof(packet));
+    memcpy(packet.header, "DATA", 4);
+    
+    auto readValid = [](XPLMDataRef ref, double fallback) -> double {
+        if (!ref) return fallback;
+        float val = XPLMGetDataf(ref);
+        if (!std::isfinite(val)) return fallback;
+        return val;
+    };
+    
+    packet.airspeed = readValid(mAirspeed, 0.0);
+    packet.altitude = readValid(mAltitude, 0.0) * 3.28084;
+    packet.heading = readValid(mHeading, 0.0);
+    packet.pitch = readValid(mPitch, 0.0);
+    packet.roll = readValid(mRoll, 0.0);
+    packet.verticalSpeed = readValid(mVerticalSpeed, 0.0) * 196.85;
+    
+    sockaddr_in destAddr;
+    memset(&destAddr, 0, sizeof(destAddr));
+    destAddr.sin_family = AF_INET;
+    destAddr.sin_port = htons(49000);
+    destAddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+    
+    sendto(mFlightDataSock, &packet, sizeof(packet), 0, 
+           (sockaddr*)&destAddr, sizeof(destAddr));
 }

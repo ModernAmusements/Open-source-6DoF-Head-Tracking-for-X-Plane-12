@@ -26,10 +26,21 @@ class CalibrationManager: ObservableObject {
         saveCalibration()
     }
     
+    private func normalizeAngle(_ angle: Float) -> Float {
+        var a = angle.truncatingRemainder(dividingBy: 360)
+        if a > 180 { a -= 360 }
+        if a < -180 { a += 360 }
+        return a
+    }
+    
     func applyCalibration(to pose: HeadPose) -> HeadPose {
         var calibrated = pose
         calibrated.position = pose.position - calibrationOffset.position
-        calibrated.rotation = pose.rotation - calibrationOffset.rotation
+        calibrated.rotation = SIMD3<Float>(
+            normalizeAngle(pose.rotation.x - calibrationOffset.rotation.x),
+            normalizeAngle(pose.rotation.y - calibrationOffset.rotation.y),
+            normalizeAngle(pose.rotation.z - calibrationOffset.rotation.z)
+        )
         return calibrated
     }
     

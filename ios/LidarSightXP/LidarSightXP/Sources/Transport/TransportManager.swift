@@ -248,8 +248,11 @@ class TransportManager: ObservableObject {
     }
     
     private func broadcastPacket(_ data: Data) {
-        // Send to both broadcast and direct Mac IP for reliability
-        let targets = ["255.255.255.255", settings.targetIP]
+        var targets: [String] = ["255.255.255.255"]
+        
+        if !settings.targetIP.isEmpty && settings.targetIP != "0.0.0.0" {
+            targets.append(settings.targetIP)
+        }
         
         for targetIP in targets {
             sendToTarget(data, host: targetIP)
@@ -257,6 +260,7 @@ class TransportManager: ObservableObject {
     }
     
     private func sendToTarget(_ data: Data, host: String) {
+        guard !host.isEmpty, host != "0.0.0.0" else { return }
         guard let port = NWEndpoint.Port(rawValue: udpPort) else { return }
         
         let endpoint = NWEndpoint.hostPort(

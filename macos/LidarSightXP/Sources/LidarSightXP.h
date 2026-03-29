@@ -15,6 +15,7 @@
 
 #pragma pack(push, 1)
 #define PACKET_SIZE 33
+#define FLIGHT_DATA_SIZE 36
 
 struct HeadPosePacket {
     uint32_t packet_id;
@@ -23,6 +24,17 @@ struct HeadPosePacket {
     float    x, y, z;
     float    pitch, yaw, roll;
 };
+
+struct FlightDataPacket {
+    char     header[4];
+    double   airspeed;
+    double   altitude;
+    double   heading;
+    double   pitch;
+    double   roll;
+    double   verticalSpeed;
+};
+#pragma pack(pop)
 
 #define OPENTRACK_PACKET_SIZE 48
 
@@ -116,15 +128,27 @@ private:
     
     static void menuHandler(void* inMenuRef, void* inItemRef);
     
+    void startFlightData();
+    void sendFlightData();
+    
     XPLMDataRef mHeadPitch;
     XPLMDataRef mHeadYaw;
     XPLMDataRef mHeadRoll;
     XPLMDataRef mViewType;
     
+    XPLMDataRef mAirspeed;
+    XPLMDataRef mAltitude;
+    XPLMDataRef mHeading;
+    XPLMDataRef mPitch;
+    XPLMDataRef mRoll;
+    XPLMDataRef mVerticalSpeed;
+    
     XPLMMenuID mMenu;
     
     std::atomic<bool> mRunning;
     std::thread mNetworkThread;
+    std::thread mFlightDataThread;
+    int mFlightDataSock;
     
     static constexpr int BUFFER_COUNT = 3;
     HeadPosePacket mPoseBuffers[BUFFER_COUNT];
