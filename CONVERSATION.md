@@ -800,6 +800,10 @@ LidarSight XP
 ### Decision
 Pending - user to choose option
 
+### Commits Pushed
+- `8b0a86e` - Fix jitter and improve head tracking
+- `63fad5b` - Update conversation log
+
 ---
 
 *Conversation logged: March 29, 2026*
