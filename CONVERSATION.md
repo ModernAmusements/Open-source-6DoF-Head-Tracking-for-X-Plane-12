@@ -798,11 +798,36 @@ LidarSight XP
   3. Flight data display
 
 ### Decision
-Pending - user to choose option
+User chose options 1 (head icon) and 2 (flight data)
 
-### Commits Pushed
-- `8b0a86e` - Fix jitter and improve head tracking
-- `63fad5b` - Update conversation log
+### Implementation
+
+**New iOS Files:**
+- `HeadIconOverlay.swift` - Pilot head icon that follows movement
+- `FlightDataPanel.swift` - Real-time flight data display
+- `FlightDataManager.swift` - Receives X-Plane UDP broadcast
+
+**Changes:**
+- Replaced 3D mesh with clean black background
+- Added head tracking indicator overlay
+- Added flight data panel (IAS, ALT, HDG, VS, PCH, ROL)
+- Plugin now broadcasts flight data to iPhone on port 49000
+
+### Full Code Review - Edge Cases Fixed
+
+**Critical fixes:**
+1. ARTrackingManager: Memory leak (thermal observer never removed)
+2. ARTrackingManager: Session delegate not cleared on stop
+3. ARTrackingManager: Pose not reset when tracking stops
+4. TransportManager: Invalid target IP could crash send
+5. CalibrationManager: Angles not normalized after calibration
+6. Plugin: NaN/Inf from datarefs could crash
+
+---
+
+## Session 21: Commits Pushed
+
+- `c2cbbde` - Add head tracking UI and flight data display
 
 ---
 
