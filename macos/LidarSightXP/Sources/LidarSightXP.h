@@ -40,8 +40,17 @@ struct AxisConfig {
     bool enabled;
     bool invert;
     
-    AxisConfig() : deadzone(2.0f), maxInput(30.0f), maxOutput(90.0f), 
-                   curvePower(2.0f), enabled(true), invert(false) {}
+    AxisConfig() : deadzone(0.5f), maxInput(90.0f), maxOutput(90.0f), 
+                   curvePower(1.0f), enabled(true), invert(false) {}
+    
+    void reset() {
+        deadzone = 0.0f;
+        maxInput = 90.0f;
+        maxOutput = 90.0f;
+        curvePower = 1.0f;
+        enabled = true;
+        invert = false;
+    }
 };
 
 struct TrackingConfig {
@@ -53,25 +62,25 @@ struct TrackingConfig {
     float filterDCutoff;
     
     TrackingConfig() 
-        : filterMinCutoff(1.0f), filterBeta(0.1f), filterDCutoff(1.0f) 
+        : filterMinCutoff(1.0f), filterBeta(0.8f), filterDCutoff(1.0f) 
     {
-        yaw.deadzone = 2.0f;
-        yaw.maxInput = 30.0f;
+        yaw.deadzone = 0.5f;
+        yaw.maxInput = 90.0f;
         yaw.maxOutput = 90.0f;
-        yaw.curvePower = 2.0f;
+        yaw.curvePower = 1.0f;
         yaw.enabled = true;
         yaw.invert = false;
         
-        pitch.deadzone = 3.0f;
-        pitch.maxInput = 20.0f;
-        pitch.maxOutput = 25.0f;
-        pitch.curvePower = 1.5f;
+        pitch.deadzone = 0.5f;
+        pitch.maxInput = 90.0f;
+        pitch.maxOutput = 90.0f;
+        pitch.curvePower = 1.0f;
         pitch.enabled = true;
         pitch.invert = false;
         
-        roll.deadzone = 0.0f;
-        roll.maxInput = 15.0f;
-        roll.maxOutput = 15.0f;
+        roll.deadzone = 0.5f;
+        roll.maxInput = 90.0f;
+        roll.maxOutput = 90.0f;
         roll.curvePower = 1.0f;
         roll.enabled = false;
         roll.invert = false;

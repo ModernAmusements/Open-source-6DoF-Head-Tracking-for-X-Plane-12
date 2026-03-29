@@ -14,7 +14,8 @@ LidarSightXP* gPlugin = nullptr;
 static char gConfigPath[512] = {0};
 
 static const int UDP_PORT = 4242;
-static const int COCKPIT_VIEW_TYPE = 1026;
+static const int COCKPIT_VIEW_MIN = 1000;
+static const int COCKPIT_VIEW_MAX = 1035;
 static const double DEFAULT_DT = 1.0 / 60.0;
 
 PLUGIN_API int XPluginStart(char* outName, char* outSignature, char* outDescription)
@@ -104,7 +105,14 @@ void LidarSightXP::start()
         this
     );
     
-    DEBUG_LOG("Plugin started successfully");
+    char buf[256];
+    snprintf(buf, sizeof(buf), "Plugin started. Config: yaw_deadzone=%.1f yaw_curve=%.1f pitch_deadzone=%.1f filter=%.1f",
+             mConfig.yaw.deadzone, mConfig.yaw.curvePower, mConfig.pitch.deadzone, mConfig.filterMinCutoff);
+    DEBUG_LOG(buf);
+    
+    snprintf(buf, sizeof(buf), "Datarefs: pitch=%p yaw=%p roll=%p view=%p",
+             (void*)mHeadPitch, (void*)mHeadYaw, (void*)mHeadRoll, (void*)mViewType);
+    DEBUG_LOG(buf);
 }
 
 void LidarSightXP::stop()
@@ -168,13 +176,22 @@ void LidarSightXP::flightLoopCallback()
     XPLMSetDataf(mHeadPitch, -offsetPitch);
     XPLMSetDataf(mHeadYaw, offsetYaw);
     XPLMSetDataf(mHeadRoll, offsetRoll);
+    
+    static int frameCount = 0;
+    frameCount++;
+    if (frameCount % 60 == 0) {
+        char buf[128];
+        snprintf(buf, sizeof(buf), "SET: pitch=%.1f yaw=%.1f roll=%.1f", 
+                 -offsetPitch, offsetYaw, offsetRoll);
+        DEBUG_LOG(buf);
+    }
 }
 
 void LidarSightXP::checkViewType()
 {
     if (mViewType != nullptr) {
         int viewType = XPLMGetDatai(mViewType);
-        mInCockpitView = (viewType == COCKPIT_VIEW_TYPE);
+        mInCockpitView = (viewType >= COCKPIT_VIEW_MIN && viewType <= COCKPIT_VIEW_MAX);
         
         static int lastViewType = -1;
         if (viewType != lastViewType) {
@@ -490,6 +507,15 @@ void LidarSightXP::startNetwork()
                 HeadPosePacket packet;
                 memcpy(&packet, buffer, PACKET_SIZE);
                 
+                static int packetCount = 0;
+                packetCount++;
+                if (packetCount % 60 == 0) {
+                    char buf[128];
+                    snprintf(buf, sizeof(buf), "RX: LidarSight pkt=%u p=%.1f y=%.1f r=%.1f", 
+                             packet.packet_id, packet.pitch, packet.yaw, packet.roll);
+                    DEBUG_LOG(buf);
+                }
+                
                 int writeIdx = mWriteBuffer.load();
                 mPoseBuffers[writeIdx] = packet;
                 
@@ -510,6 +536,15 @@ void LidarSightXP::startNetwork()
                 packet.pitch = static_cast<float>(otPacket.pitch * 180.0 / M_PI);
                 packet.yaw = static_cast<float>(otPacket.yaw * 180.0 / M_PI);
                 packet.roll = static_cast<float>(otPacket.roll * 180.0 / M_PI);
+                
+                static int packetCount = 0;
+                packetCount++;
+                if (packetCount % 60 == 0) {
+                    char buf[128];
+                    snprintf(buf, sizeof(buf), "RX: OpenTrack p=%.1f y=%.1f r=%.1f", 
+                             packet.pitch, packet.yaw, packet.roll);
+                    DEBUG_LOG(buf);
+                }
                 
                 int writeIdx = mWriteBuffer.load();
                 mPoseBuffers[writeIdx] = packet;

@@ -17,6 +17,11 @@ class TransportManager: ObservableObject {
     var calibrationOffset: CalibrationOffset = CalibrationOffset()
     var settings: TrackingSettings = TrackingSettings()
     
+    private var lastPitch: Float = 0
+    private var lastYaw: Float = 0
+    private var lastRoll: Float = 0
+    private var hasFirstPose: Bool = false
+    
     enum ConnectionStatus: Equatable {
         case disconnected
         case connecting
@@ -131,6 +136,8 @@ class TransportManager: ObservableObject {
         listener = nil
         broadcastConnection?.cancel()
         broadcastConnection = nil
+        browser?.cancel()
+        browser = nil
         connectionStatus = .disconnected
     }
     
@@ -166,6 +173,11 @@ class TransportManager: ObservableObject {
     func sendPose(_ pose: HeadPose) {
         guard connectionStatus == .connected || isUSBConnected else { return }
         
+        guard pose.isValid else {
+            hasFirstPose = false
+            return
+        }
+        
         packetId += 1
         
         let data: Data
@@ -178,57 +190,37 @@ class TransportManager: ObservableObject {
             packet.packetId = packetId
             packet.timestampUs = Float(pose.timestamp * 1_000_000)
             
-            let useEyeRotation = settings.trackingMode.usesEyeTracking && pose.eyeRotation != nil
-            let eyeWeight: Float = 0.3
-            
-            let finalRotation: SIMD3<Float>
-            
-            if useEyeRotation, let eyeRot = pose.eyeRotation {
-                let eyeOffset = SIMD3<Float>(
-                    (eyeRot.x - calibrationOffset.rotation.x) * settings.eyeSensitivity,
-                    (eyeRot.y - calibrationOffset.rotation.y) * settings.eyeSensitivity,
-                    (eyeRot.z - calibrationOffset.rotation.z) * settings.eyeSensitivity
-                )
-                
-                switch settings.trackingMode {
-                case .eyesOnly:
-                    finalRotation = eyeOffset
-                case .headAndEyes:
-                    let headRot = SIMD3<Float>(
-                        (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
-                        (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
-                        (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
-                    )
-                    finalRotation = SIMD3<Float>(
-                        headRot.x + eyeOffset.x * eyeWeight,
-                        headRot.y + eyeOffset.y * eyeWeight,
-                        headRot.z + eyeOffset.z * eyeWeight
-                    )
-                default:
-                    finalRotation = SIMD3<Float>(
-                        (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
-                        (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
-                        (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
-                    )
-                }
-            } else {
-                finalRotation = SIMD3<Float>(
-                    (pose.rotation.x - calibrationOffset.rotation.x) * settings.sensitivity,
-                    (pose.rotation.y - calibrationOffset.rotation.y) * settings.sensitivity,
-                    (pose.rotation.z - calibrationOffset.rotation.z) * settings.sensitivity
-                )
+            let normalizeAngle: (Float) -> Float = { angle in
+                var a = angle.truncatingRemainder(dividingBy: 360)
+                if a > 180 { a -= 360 }
+                if a < -180 { a += 360 }
+                return a
             }
             
-            let rawX = (pose.position.x - calibrationOffset.position.x) * settings.sensitivity
-            let rawY = (pose.position.y - calibrationOffset.position.y) * settings.sensitivity
-            let rawZ = (pose.position.z - calibrationOffset.position.z) * settings.sensitivity
+            let rawPitch = normalizeAngle(pose.rotation.x - calibrationOffset.rotation.x)
+            let rawYaw = normalizeAngle(pose.rotation.y - calibrationOffset.rotation.y)
+            let rawRoll = normalizeAngle(pose.rotation.z - calibrationOffset.rotation.z)
             
-            packet.x = applyRangeMapping(rawX)
-            packet.y = applyRangeMapping(rawY)
-            packet.z = applyRangeMapping(rawZ)
-            packet.pitch = applyAngleClamp(finalRotation.x)
-            packet.yaw = applyAngleClamp(finalRotation.y)
-            packet.roll = applyAngleClamp(finalRotation.z)
+            let alpha = max(0.0, min(1.0, 1.0 - settings.smoothing))
+            
+            if !hasFirstPose || settings.smoothing <= 0.01 {
+                lastPitch = rawPitch
+                lastYaw = rawYaw
+                lastRoll = rawRoll
+                hasFirstPose = true
+            }
+            
+            packet.pitch = lastPitch + alpha * (rawPitch - lastPitch)
+            packet.yaw = lastYaw + alpha * (rawYaw - lastYaw)
+            packet.roll = lastRoll + alpha * (rawRoll - lastRoll)
+            
+            lastPitch = packet.pitch
+            lastYaw = packet.yaw
+            lastRoll = packet.roll
+            
+            packet.x = 0
+            packet.y = 0
+            packet.z = 0
             
             let isCalibrated = calibrationOffset != CalibrationOffset()
             packet.setFlag(.calibrated, isCalibrated)
@@ -242,22 +234,6 @@ class TransportManager: ObservableObject {
         } else {
             broadcastPacket(data)
         }
-    }
-    
-    private func applyAngleClamp(_ angle: Float) -> Float {
-        let maxA = settings.maxAngle
-        if abs(angle) <= maxA {
-            return angle
-        }
-        return maxA * (angle > 0 ? 1 : -1)
-    }
-    
-    private func applyRangeMapping(_ value: Float) -> Float {
-        let scale = settings.rangeScale
-        let sign: Float = value >= 0 ? 1 : -1
-        let absValue = abs(value)
-        let mapped = pow(absValue, 1.0 + scale)
-        return sign * mapped
     }
     
     private func setupBroadcastConnection() {

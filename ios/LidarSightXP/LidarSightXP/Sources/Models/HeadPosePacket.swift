@@ -68,85 +68,24 @@ struct OpenTrackPacket {
     }
     
     init(from pose: HeadPose, settings: TrackingSettings, calibration: CalibrationOffset) {
-        let useEyeRotation = settings.trackingMode.usesEyeTracking && pose.eyeRotation != nil
-        let eyeWeight: Float = 0.3
-        
-        let finalRotation: SIMD3<Float>
-        
-        if useEyeRotation, let eyeRot = pose.eyeRotation {
-            let eyeOffset = SIMD3<Float>(
-                (eyeRot.x - calibration.rotation.x) * settings.eyeSensitivity,
-                (eyeRot.y - calibration.rotation.y) * settings.eyeSensitivity,
-                (eyeRot.z - calibration.rotation.z) * settings.eyeSensitivity
-            )
-            
-            switch settings.trackingMode {
-            case .eyesOnly:
-                finalRotation = eyeOffset
-            case .headAndEyes:
-                let headRot = SIMD3<Float>(
-                    (pose.rotation.x - calibration.rotation.x) * settings.sensitivity,
-                    (pose.rotation.y - calibration.rotation.y) * settings.sensitivity,
-                    (pose.rotation.z - calibration.rotation.z) * settings.sensitivity
-                )
-                finalRotation = SIMD3<Float>(
-                    headRot.x + eyeOffset.x * eyeWeight,
-                    headRot.y + eyeOffset.y * eyeWeight,
-                    headRot.z + eyeOffset.z * eyeWeight
-                )
-            default:
-                finalRotation = SIMD3<Float>(
-                    (pose.rotation.x - calibration.rotation.x) * settings.sensitivity,
-                    (pose.rotation.y - calibration.rotation.y) * settings.sensitivity,
-                    (pose.rotation.z - calibration.rotation.z) * settings.sensitivity
-                )
-            }
-        } else {
-            // Normalize angles to prevent wrapping issues
-            let normalizeAngle: (Float) -> Float = { angle in
-                var a = angle.truncatingRemainder(dividingBy: 360)
-                if a > 180 { a -= 360 }
-                if a < -180 { a += 360 }
-                return a
-            }
-            
-            let rawPitch = normalizeAngle(pose.rotation.x - calibration.rotation.x) * settings.sensitivity
-            let rawYaw = normalizeAngle(pose.rotation.y - calibration.rotation.y) * settings.sensitivity
-            let rawRoll = normalizeAngle(pose.rotation.z - calibration.rotation.z) * settings.sensitivity
-            
-            finalRotation = SIMD3<Float>(rawPitch, rawYaw, rawRoll)
+        let normalizeAngle: (Float) -> Float = { angle in
+            var a = angle.truncatingRemainder(dividingBy: 360)
+            if a > 180 { a -= 360 }
+            if a < -180 { a += 360 }
+            return a
         }
         
-        let rawX = (pose.position.x - calibration.position.x) * settings.sensitivity
-        let rawY = (pose.position.y - calibration.position.y) * settings.sensitivity
-        let rawZ = (pose.position.z - calibration.position.z) * settings.sensitivity
+        let rawPitch = normalizeAngle(pose.rotation.x - calibration.rotation.x)
+        let rawYaw = normalizeAngle(pose.rotation.y - calibration.rotation.y)
+        let rawRoll = normalizeAngle(pose.rotation.z - calibration.rotation.z)
         
-        self.x = Double(OpenTrackPacket.applyRangeMapping(rawX, scale: settings.rangeScale))
-        self.y = Double(OpenTrackPacket.applyRangeMapping(rawY, scale: settings.rangeScale))
-        self.z = Double(OpenTrackPacket.applyRangeMapping(rawZ, scale: settings.rangeScale))
+        self.x = 0
+        self.y = 0
+        self.z = 0
         
-        let clampedPitch = OpenTrackPacket.applyAngleClamp(finalRotation.x, maxAngle: settings.maxAngle)
-        let clampedYaw = OpenTrackPacket.applyAngleClamp(finalRotation.y, maxAngle: settings.maxAngle)
-        let clampedRoll = OpenTrackPacket.applyAngleClamp(finalRotation.z, maxAngle: settings.maxAngle)
-        
-        self.pitch = Double(clampedPitch) * .pi / 180.0  // degrees to radians
-        self.yaw = Double(clampedYaw) * .pi / 180.0
-        self.roll = Double(clampedRoll) * .pi / 180.0
-    }
-    
-    private static func applyRangeMapping(_ value: Float, scale: Float) -> Float {
-        let sign: Float = value >= 0 ? 1 : -1
-        let absValue = abs(value)
-        let mapped = pow(absValue, 1.0 + scale)
-        return sign * mapped
-    }
-    
-    private static func applyAngleClamp(_ angle: Float, maxAngle: Float) -> Float {
-        let maxA = maxAngle
-        if abs(angle) <= maxA {
-            return angle
-        }
-        return maxA * (angle > 0 ? 1 : -1)
+        self.pitch = Double(rawPitch) * .pi / 180.0
+        self.yaw = Double(rawYaw) * .pi / 180.0
+        self.roll = Double(rawRoll) * .pi / 180.0
     }
     
     func toData() -> Data {

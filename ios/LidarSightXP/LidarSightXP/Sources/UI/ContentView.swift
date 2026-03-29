@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var opacity: Double = 1.0
     @State private var steadyFrames = 0
     @State private var lastPoseChange = Date()
+    @State private var stealthTimer: Timer?
     
     let steadyThreshold = 60
     let dimDelay: Double = 10.0
@@ -59,25 +60,34 @@ struct ContentView: View {
             transportManager.loadCalibration()
             startStealthMonitor()
         }
+        .onDisappear {
+            stopStealthMonitor()
+        }
         .onChange(of: trackingManager.currentPose) { _ in
             checkForStealthMode()
         }
     }
     
     private func startStealthMonitor() {
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
+        stealthTimer?.invalidate()
+        stealthTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             Task { @MainActor in
-                let settings = transportManager.settings
+                let settings = self.transportManager.settings
                 if settings.stealthMode {
-                    let timeSinceChange = Date().timeIntervalSince(lastPoseChange)
-                    if timeSinceChange > dimDelay && steadyFrames > steadyThreshold {
+                    let timeSinceChange = Date().timeIntervalSince(self.lastPoseChange)
+                    if timeSinceChange > self.dimDelay && self.steadyFrames > self.steadyThreshold {
                         withAnimation(.easeInOut(duration: 0.5)) {
-                            opacity = 0.3
+                            self.opacity = 0.3
                         }
                     }
                 }
             }
         }
+    }
+    
+    private func stopStealthMonitor() {
+        stealthTimer?.invalidate()
+        stealthTimer = nil
     }
     
     private func checkForStealthMode() {
@@ -293,7 +303,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     
     @State private var sensitivity: Double = 1.0
-    @State private var smoothing: Double = 0.6
+    @State private var smoothing: Double = 0.85
     @State private var stealthMode: Bool = true
     @State private var selectedMode: TrackingMode = .headOnly
     @State private var selectedProtocol: ProtocolMode = .openTrack
@@ -319,6 +329,11 @@ struct SettingsView: View {
                     Text(selectedMode.description)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    
+                    Button("Save") {
+                        saveSettings()
+                    }
+                    .foregroundColor(.blue)
                 }
                 
                 Section("Parameters") {
@@ -331,7 +346,8 @@ struct SettingsView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
-                        Slider(value: $sensitivity, in: 0.5...2.0, step: 0.1)
+                        Slider(value: $sensitivity, in: 0.5...3.0, step: 0.1)
+                            .onChange(of: sensitivity) { _ in saveSettings() }
                         Text("Multiplies head movement range")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -346,7 +362,8 @@ struct SettingsView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
-                        Slider(value: $smoothing, in: 0.1...1.0, step: 0.1)
+                        Slider(value: $smoothing, in: 0.0...0.9, step: 0.1)
+                            .onChange(of: smoothing) { _ in saveSettings() }
                         Text("Higher = smoother but more latency")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -362,6 +379,7 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         Slider(value: $maxAngle, in: 15...90, step: 5)
+                            .onChange(of: maxAngle) { _ in saveSettings() }
                         Text("Clamps rotation range to keep looking at screen")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -377,6 +395,7 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         Slider(value: $rangeScale, in: 0...1.0, step: 0.1)
+                            .onChange(of: rangeScale) { _ in saveSettings() }
                         Text("Non-linear mapping - higher = less movement needed at edges")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -394,6 +413,7 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         Slider(value: $eyeSensitivity, in: 1.0...5.0, step: 0.5)
+                            .onChange(of: eyeSensitivity) { _ in saveSettings() }
                         Text("Higher = more view movement from eye gaze")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -408,12 +428,14 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .onChange(of: selectedProtocol) { _ in saveSettings() }
                     
                     Text(selectedProtocol.description)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     Toggle("Stealth Mode", isOn: $stealthMode)
+                        .onChange(of: stealthMode) { _ in saveSettings() }
                 }
                 
                 Section("Info") {
