@@ -71,7 +71,7 @@ struct ParsedPacket {
 
 struct DebuggerSettings: Codable {
     var tracking = TrackingSettings()
-    var listenPort: Int = 4242
+    var listenPort: Int = 4243
     
     static var `default`: DebuggerSettings { DebuggerSettings() }
     

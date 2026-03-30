@@ -1,5 +1,6 @@
 import Foundation
 import ARKit
+import AVFoundation
 import Combine
 
 @MainActor
@@ -97,6 +98,18 @@ class ARTrackingManager: NSObject, ObservableObject {
             return
         }
         
+        AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+            DispatchQueue.main.async {
+                if granted {
+                    self?.startFaceTrackingSession()
+                } else {
+                    print("Camera permission denied")
+                }
+            }
+        }
+    }
+    
+    private func startFaceTrackingSession() {
         let config = ARFaceTrackingConfiguration()
         config.isLightEstimationEnabled = true
         config.maximumNumberOfTrackedFaces = 1

@@ -21,7 +21,7 @@ class HeadTrackerViewModel: ObservableObject {
     
     @Published var settings: DebuggerSettings = .load()
     
-    private let listener = UDPListerner()
+    private let listener = TCPListener()
     private let filter = OneEuroFilterVector3()
     private var hasInitialPose = false
     private var poseOffset = HeadPose()
@@ -249,8 +249,9 @@ struct ContentView: View {
                 },
                 isPresented: $showSettings
             )
-            .frame(width: 350, height: 600)
+            .frame(width: 400, height: 650)
             .padding()
+            .interactiveDismissDisabled(false)
         }
         .onChange(of: viewModel.settings.tracking.filterMinCutoff) { _, _ in
             viewModel.updateFilter()

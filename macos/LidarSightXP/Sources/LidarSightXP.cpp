@@ -13,7 +13,8 @@
 LidarSightXP* gPlugin = nullptr;
 static char gConfigPath[512] = {0};
 
-static const int UDP_PORT = 4242;
+static const int TCP_PORT = 4243;
+static const int UDP_FORWARD_PORT = 4242;
 static const int COCKPIT_VIEW_MIN = 1000;
 static const int COCKPIT_VIEW_MAX = 1035;
 static const double DEFAULT_DT = 1.0 / 60.0;
@@ -68,6 +69,8 @@ LidarSightXP::LidarSightXP()
     , mInCockpitView(false)
     , mIsConnected(false)
     , mHasInitialPose(false)
+    , mFlightDataSock(-1)
+    , mUdpForwardSock(-1)
 {
     memset(mPoseBuffers, 0, sizeof(mPoseBuffers));
     memset(&mFilteredPose, 0, sizeof(HeadPosePacket));
@@ -463,109 +466,136 @@ void LidarSightXP::menuHandler(void* inMenuRef, void* inItemRef)
 void LidarSightXP::startNetwork()
 {
     mNetworkThread = std::thread([this]() {
-        int sock = socket(AF_INET, SOCK_DGRAM, 0);
-        if (sock < 0) {
+        int listenSock = socket(AF_INET, SOCK_STREAM, 0);
+        if (listenSock < 0) {
             DEBUG_LOG("Failed to create socket");
             return;
         }
         
         int reuse = 1;
-        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-        
-        // Allow broadcast
-        int broadcast = 1;
-        setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+        setsockopt(listenSock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
         
         sockaddr_in serverAddr;
         memset(&serverAddr, 0, sizeof(serverAddr));
         serverAddr.sin_family = AF_INET;
         serverAddr.sin_addr.s_addr = INADDR_ANY;
-        serverAddr.sin_port = htons(UDP_PORT);
+        serverAddr.sin_port = htons(TCP_PORT);
         
-        if (bind(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+        if (bind(listenSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
             DEBUG_LOG("Failed to bind socket");
-            close(sock);
+            close(listenSock);
             return;
         }
         
-        DEBUG_LOG("Listening on UDP port 4242");
-        mIsConnected.store(true);
+        if (listen(listenSock, 1) < 0) {
+            DEBUG_LOG("Failed to listen");
+            close(listenSock);
+            return;
+        }
         
-        char buffer[1024];
-        sockaddr_in clientAddr;
-        socklen_t clientLen = sizeof(clientAddr);
+        DEBUG_LOG("Listening on TCP port 4243");
+        
+        mUdpForwardSock = socket(AF_INET, SOCK_DGRAM, 0);
+        if (mUdpForwardSock >= 0) {
+            int broadcast = 1;
+            setsockopt(mUdpForwardSock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+            DEBUG_LOG("UDP forward enabled on port 4242");
+        } else {
+            DEBUG_LOG("Failed to create UDP forward socket");
+        }
         
         while (mRunning) {
             fd_set readfds;
             FD_ZERO(&readfds);
-            FD_SET(sock, &readfds);
+            FD_SET(listenSock, &readfds);
             
             timeval timeout;
-            timeout.tv_sec = 0;
-            timeout.tv_usec = 50000;
+            timeout.tv_sec = 1;
+            timeout.tv_usec = 0;
             
-            int ready = select(sock + 1, &readfds, nullptr, nullptr, &timeout);
+            int ready = select(listenSock + 1, &readfds, nullptr, nullptr, &timeout);
             if (ready < 0) break;
             if (ready == 0) continue;
             
-            ssize_t n = recvfrom(sock, buffer, sizeof(buffer), 0, 
-                                 (sockaddr*)&clientAddr, &clientLen);
+            sockaddr_in clientAddr;
+            socklen_t clientLen = sizeof(clientAddr);
+            int clientSock = accept(listenSock, (sockaddr*)&clientAddr, &clientLen);
             
-            if (n == PACKET_SIZE) {
-                HeadPosePacket packet;
-                memcpy(&packet, buffer, PACKET_SIZE);
+            if (clientSock < 0) continue;
+            
+            DEBUG_LOG("Client connected");
+            mIsConnected.store(true);
+            
+            char buffer[1024];
+            std::vector<char> receiveBuffer;
+            
+            while (mRunning) {
+                fd_set clientReadfds;
+                FD_ZERO(&clientReadfds);
+                FD_SET(clientSock, &clientReadfds);
                 
-                static int packetCount = 0;
-                packetCount++;
-                if (packetCount % 60 == 0) {
-                    char buf[128];
-                    snprintf(buf, sizeof(buf), "RX: LidarSight pkt=%u p=%.1f y=%.1f r=%.1f", 
-                             packet.packet_id, packet.pitch, packet.yaw, packet.roll);
-                    DEBUG_LOG(buf);
+                timeval clientTimeout;
+                clientTimeout.tv_sec = 0;
+                clientTimeout.tv_usec = 50000;
+                
+                int clientReady = select(clientSock + 1, &clientReadfds, nullptr, nullptr, &clientTimeout);
+                if (clientReady < 0) break;
+                if (clientReady == 0) continue;
+                
+                ssize_t n = recv(clientSock, buffer, sizeof(buffer), 0);
+                if (n <= 0) {
+                    DEBUG_LOG("Client disconnected");
+                    break;
                 }
                 
-                int writeIdx = mWriteBuffer.load();
-                mPoseBuffers[writeIdx] = packet;
+                receiveBuffer.insert(receiveBuffer.end(), buffer, buffer + n);
                 
-                int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
-                mWriteBuffer.store(nextBuffer);
-            }
-            else if (n == OPENTRACK_PACKET_SIZE) {
-                OpenTrackPacket otPacket;
-                memcpy(&otPacket, buffer, OPENTRACK_PACKET_SIZE);
-                
-                HeadPosePacket packet;
-                packet.packet_id = 0;
-                packet.flags = 0x02;
-                packet.timestamp_us = 0;
-                packet.x = static_cast<float>(otPacket.x);
-                packet.y = static_cast<float>(otPacket.y);
-                packet.z = static_cast<float>(otPacket.z);
-                packet.pitch = static_cast<float>(otPacket.pitch * 180.0 / M_PI);
-                packet.yaw = static_cast<float>(otPacket.yaw * 180.0 / M_PI);
-                packet.roll = static_cast<float>(otPacket.roll * 180.0 / M_PI);
-                
-                static int packetCount = 0;
-                packetCount++;
-                if (packetCount % 60 == 0) {
-                    char buf[128];
-                    snprintf(buf, sizeof(buf), "RX: OpenTrack p=%.1f y=%.1f r=%.1f", 
-                             packet.pitch, packet.yaw, packet.roll);
-                    DEBUG_LOG(buf);
+                while (receiveBuffer.size() >= 4) {
+                    uint32_t packetLen = *((uint32_t*)receiveBuffer.data());
+                    packetLen = ntohl(packetLen);
+                    
+                    if (receiveBuffer.size() >= 4 + packetLen && packetLen == PACKET_SIZE) {
+                        HeadPosePacket packet;
+                        memcpy(&packet, receiveBuffer.data() + 4, PACKET_SIZE);
+                        receiveBuffer.erase(receiveBuffer.begin(), receiveBuffer.begin() + 4 + PACKET_SIZE);
+                        
+                        static int packetCount = 0;
+                        packetCount++;
+                        if (packetCount % 60 == 0) {
+                            char buf[128];
+                            snprintf(buf, sizeof(buf), "RX: LidarSight pkt=%u p=%.1f y=%.1f r=%.1f", 
+                                     packet.packet_id, packet.pitch, packet.yaw, packet.roll);
+                            DEBUG_LOG(buf);
+                        }
+                        
+                        int writeIdx = mWriteBuffer.load();
+                        mPoseBuffers[writeIdx] = packet;
+                        
+                        if (mUdpForwardSock >= 0) {
+                            sockaddr_in broadcastAddr;
+                            memset(&broadcastAddr, 0, sizeof(broadcastAddr));
+                            broadcastAddr.sin_family = AF_INET;
+                            broadcastAddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+                            broadcastAddr.sin_port = htons(UDP_FORWARD_PORT);
+                            sendto(mUdpForwardSock, &packet, PACKET_SIZE, 0, 
+                                   (sockaddr*)&broadcastAddr, sizeof(broadcastAddr));
+                        }
+                        
+                        int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
+                        mWriteBuffer.store(nextBuffer);
+                    } else if (packetLen != PACKET_SIZE) {
+                        break;
+                    }
                 }
-                
-                int writeIdx = mWriteBuffer.load();
-                mPoseBuffers[writeIdx] = packet;
-                
-                int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
-                mWriteBuffer.store(nextBuffer);
             }
+            
+            close(clientSock);
+            mIsConnected.store(false);
         }
         
         DEBUG_LOG("Network thread exiting");
-        mIsConnected.store(false);
         
-        close(sock);
+        close(listenSock);
     });
 }
 
@@ -573,6 +603,10 @@ void LidarSightXP::stopNetwork()
 {
     if (mNetworkThread.joinable()) {
         mNetworkThread.join();
+    }
+    if (mUdpForwardSock >= 0) {
+        close(mUdpForwardSock);
+        mUdpForwardSock = -1;
     }
     mIsConnected.store(false);
 }

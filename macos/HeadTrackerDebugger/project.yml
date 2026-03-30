@@ -29,13 +29,13 @@ targets:
     info:
       path: HeadTrackerDebugger/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Head Tracker Debugger
-        CFBundleName: HeadTrackerDebugger
+        CFBundleDisplayName: LiDARSight
+        CFBundleName: LiDARSight
         CFBundleIdentifier: com.lidarsight.debugger
         CFBundleVersion: "1"
         CFBundleShortVersionString: "1.0"
         CFBundlePackageType: APPL
-        CFBundleExecutable: HeadTrackerDebugger
+        CFBundleExecutable: LiDARSight
         LSMinimumSystemVersion: "14.0"
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true

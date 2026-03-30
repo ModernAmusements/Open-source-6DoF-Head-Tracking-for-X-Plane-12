@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Head Tracker Debugger</string>
+	<string>LiDARSight</string>
 	<key>CFBundleExecutable</key>
-	<string>HeadTrackerDebugger</string>
+	<string>LiDARSight</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.lidarsight.debugger</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>HeadTrackerDebugger</string>
+	<string>LiDARSight</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

@@ -149,6 +149,7 @@ private:
     std::thread mNetworkThread;
     std::thread mFlightDataThread;
     int mFlightDataSock;
+    int mUdpForwardSock;
     
     static constexpr int BUFFER_COUNT = 3;
     HeadPosePacket mPoseBuffers[BUFFER_COUNT];

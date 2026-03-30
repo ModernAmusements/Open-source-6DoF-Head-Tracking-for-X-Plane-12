@@ -158,7 +158,7 @@ struct ConnectionStatusView: View {
         .background(.ultraThinMaterial, in: Capsule())
         .onTapGesture {
             transportManager.requestLocalNetworkPermission {
-                transportManager.startUDPServer()
+                transportManager.startTCPServer()
             }
         }
     }
@@ -177,7 +177,9 @@ struct ConnectionStatusView: View {
     
     private var statusText: String {
         switch transportManager.connectionStatus {
-        case .connected: return "UDP: \(transportManager.localIP):\(transportManager.udpPort)"
+        case .connected: 
+            let targetIP = transportManager.settings.targetIP.isEmpty ? transportManager.localIP : transportManager.settings.targetIP
+            return "TCP: \(targetIP):\(transportManager.tcpPort)"
         case .connecting: return "Connecting..."
         case .disconnected: return "Disconnected"
         case .error(let msg): return "Error: \(msg)"
@@ -242,7 +244,7 @@ struct StartButtonView: View {
     var body: some View {
         Button(action: {
             transportManager.requestLocalNetworkPermission { [self] in
-                transportManager.startUDPServer()
+                transportManager.startTCPServer()
                 trackingManager.trackingMode = transportManager.settings.trackingMode
                 trackingManager.startTracking()
             }
@@ -316,6 +318,7 @@ struct SettingsView: View {
     @State private var maxAngle: Double = 45.0
     @State private var rangeScale: Double = 0.7
     @State private var eyeSensitivity: Double = 2.5
+    @State private var targetIP: String = ""
     
     var body: some View {
         NavigationView {
@@ -440,6 +443,16 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
+                    TextField("Target IP (Mac)", text: $targetIP)
+                        .textFieldStyle(.roundedBorder)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                        .onChange(of: targetIP) { _ in saveSettings() }
+                    
+                    Text("IP of your Mac (e.g., 192.168.0.100)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
                     Toggle("Stealth Mode", isOn: $stealthMode)
                         .onChange(of: stealthMode) { _ in saveSettings() }
                 }
@@ -454,7 +467,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Port")
                         Spacer()
-                        Text("\(transportManager.udpPort)")
+                        Text("\(transportManager.tcpPort)")
                             .foregroundColor(.secondary)
                     }
                     if trackingManager.isTracking {
@@ -492,6 +505,7 @@ struct SettingsView: View {
         maxAngle = Double(transportManager.settings.maxAngle)
         rangeScale = Double(transportManager.settings.rangeScale)
         eyeSensitivity = Double(transportManager.settings.eyeSensitivity)
+        targetIP = transportManager.settings.targetIP
     }
     
     private func saveSettings() {
@@ -503,7 +517,8 @@ struct SettingsView: View {
             protocolMode: selectedProtocol,
             maxAngle: Float(maxAngle),
             rangeScale: Float(rangeScale),
-            eyeSensitivity: Float(eyeSensitivity)
+            eyeSensitivity: Float(eyeSensitivity),
+            targetIP: targetIP
         )
         transportManager.updateSettings(settings)
         trackingManager.trackingMode = selectedMode

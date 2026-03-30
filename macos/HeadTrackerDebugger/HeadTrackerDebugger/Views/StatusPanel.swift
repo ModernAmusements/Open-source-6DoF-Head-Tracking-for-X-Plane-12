@@ -1,10 +1,40 @@
 import SwiftUI
+import Network
 
 struct StatusPanel: View {
     var isConnected: Bool
     var protocol_: PacketProtocol
     var packetRate: Double
     var errorMessage: String?
+    
+    private var localIP: String {
+        var address = "Unknown"
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        
+        guard getifaddrs(&ifaddr) == 0 else { return address }
+        defer { freeifaddrs(ifaddr) }
+        
+        var ptr = ifaddr
+        while ptr != nil {
+            defer { ptr = ptr?.pointee.ifa_next }
+            
+            guard let interface = ptr?.pointee else { continue }
+            let addrFamily = interface.ifa_addr.pointee.sa_family
+            
+            if addrFamily == UInt8(AF_INET) {
+                let name = String(cString: interface.ifa_name)
+                if name == "en0" || name == "en1" {
+                    var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                    getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
+                               &hostname, socklen_t(hostname.count), nil, 0, NI_NUMERICHOST)
+                    address = String(cString: hostname)
+                    break
+                }
+            }
+        }
+        
+        return address
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -20,6 +50,15 @@ struct StatusPanel: View {
                 Text(isConnected ? "Connected" : "Disconnected")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(isConnected ? .green : .red)
+            }
+            
+            HStack(spacing: 4) {
+                Text("Local IP:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("\(localIP):4243")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundColor(.primary)
             }
             
             if let error = errorMessage {

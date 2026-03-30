@@ -7,11 +7,11 @@ class TransportManager: ObservableObject {
     @Published var connectionStatus: ConnectionStatus = .disconnected
     @Published var isUSBConnected: Bool = false
     @Published var localIP: String = "0.0.0.0"
-    @Published var udpPort: UInt16 = 4242
+    @Published var tcpPort: UInt16 = 4243
     @Published var needsLocalNetworkPermission: Bool = false
     
-    private var listener: NWListener?
-    private var broadcastConnection: NWConnection?
+    private var tcpConnection: NWConnection?
+    private let connectionQueue = DispatchQueue(label: "tcpconnection", qos: .userInitiated)
     private var packetId: UInt32 = 0
     private var browser: NWBrowser?
     var calibrationOffset: CalibrationOffset = CalibrationOffset()
@@ -122,26 +122,107 @@ class TransportManager: ObservableObject {
         needsLocalNetworkPermission = true
     }
     
-    func startUDPServerIfReady() {
+    func startTCPServerIfReady() {
         guard !needsLocalNetworkPermission else { return }
-        startUDPServer()
+        startTCPServer()
     }
     
-    func startUDPServer() {
-        print("DEBUG: startUDPServer called")
-        connectionStatus = .connected
+    func startTCPServer() {
+        print("DEBUG: startTCPServer called")
+        connectionStatus = .connecting
         updateLocalIP()
-        setupBroadcastConnection()
+        connectToMac()
     }
     
-    func stopUDPServer() {
-        listener?.cancel()
-        listener = nil
-        broadcastConnection?.cancel()
-        broadcastConnection = nil
+    func stopTCPServer() {
+        tcpConnection?.cancel()
+        tcpConnection = nil
         browser?.cancel()
         browser = nil
         connectionStatus = .disconnected
+    }
+    
+    private func connectToMac() {
+        let targetIP: String
+        if !settings.targetIP.isEmpty && settings.targetIP != "0.0.0.0" {
+            targetIP = settings.targetIP
+        } else {
+            targetIP = getLocalNetworkIP()
+        }
+        
+        guard targetIP != "0.0.0.0" else {
+            print("DEBUG: No valid target IP")
+            connectionStatus = .error("No target IP")
+            return
+        }
+        
+        print("DEBUG: Connecting to \(targetIP):\(tcpPort)")
+        
+        let host = NWEndpoint.Host(targetIP)
+        let port = NWEndpoint.Port(rawValue: tcpPort)!
+        
+        let parameters = NWParameters.tcp
+        parameters.allowLocalEndpointReuse = true
+        
+        tcpConnection = NWConnection(host: host, port: port, using: parameters)
+        
+        tcpConnection?.stateUpdateHandler = { [weak self] state in
+            DispatchQueue.main.async {
+                switch state {
+                case .ready:
+                    print("DEBUG: TCP Connected!")
+                    self?.connectionStatus = .connected
+                case .failed(let error):
+                    print("DEBUG: TCP Connection failed: \(error)")
+                    self?.connectionStatus = .error(error.localizedDescription)
+                    self?.reconnectAfterDelay()
+                case .cancelled:
+                    self?.connectionStatus = .disconnected
+                case .waiting(let error):
+                    print("DEBUG: TCP Waiting: \(error)")
+                default:
+                    break
+                }
+            }
+        }
+        
+        tcpConnection?.start(queue: connectionQueue)
+    }
+    
+    private func reconnectAfterDelay() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard self?.connectionStatus != .connected else { return }
+            self?.connectToMac()
+        }
+    }
+    
+    private func getLocalNetworkIP() -> String {
+        var address = "0.0.0.0"
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        
+        guard getifaddrs(&ifaddr) == 0 else { return address }
+        defer { freeifaddrs(ifaddr) }
+        
+        var ptr = ifaddr
+        while ptr != nil {
+            defer { ptr = ptr?.pointee.ifa_next }
+            
+            guard let interface = ptr?.pointee else { continue }
+            let addrFamily = interface.ifa_addr.pointee.sa_family
+            
+            if addrFamily == UInt8(AF_INET) {
+                let name = String(cString: interface.ifa_name)
+                if name == "en0" || name == "en1" {
+                    var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                    getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
+                               &hostname, socklen_t(hostname.count), nil, 0, NI_NUMERICHOST)
+                    address = String(cString: hostname)
+                    break
+                }
+            }
+        }
+        
+        return address
     }
     
     private func updateLocalIP() {
@@ -238,66 +319,28 @@ class TransportManager: ObservableObject {
         if isUSBConnected {
             sendOverPeerTalk(data)
         } else {
-            broadcastPacket(data)
+            sendOverTCP(data)
         }
     }
     
-    private func setupBroadcastConnection() {
-        // Skip broadcast setup - we'll send directly
-        // The X-Plane plugin will receive on port 4242
-        print("UDP setup complete - will broadcast to all addresses")
-    }
-    
-    private func getBroadcastAddress() -> String {
-        // Use simple broadcast to all interfaces
-        return "255.255.255.255"
-    }
-    
-    private func broadcastPacket(_ data: Data) {
-        var targets: [String] = ["255.255.255.255"]
-        
-        if !settings.targetIP.isEmpty && settings.targetIP != "0.0.0.0" {
-            targets.append(settings.targetIP)
-        }
-        
-        for targetIP in targets {
-            sendToTarget(data, host: targetIP)
-        }
-    }
-    
-    private func sendToTarget(_ data: Data, host: String) {
-        guard !host.isEmpty, host != "0.0.0.0" else { return }
-        guard let port = NWEndpoint.Port(rawValue: udpPort) else { return }
-        
-        let endpoint = NWEndpoint.hostPort(
-            host: NWEndpoint.Host(host),
-            port: port
-        )
-        
-        let params = NWParameters.udp
-        params.allowLocalEndpointReuse = true
-        
-        let connection = NWConnection(to: endpoint, using: params)
-        
-        connection.stateUpdateHandler = { state in
-            switch state {
-            case .ready:
-                print("DEBUG: Sending packet to \(host):\(port), size=\(data.count)")
-                connection.send(content: data, completion: .contentProcessed { error in
-                    if let error = error {
-                        print("Send error: \(error)")
-                    }
-                    connection.cancel()
-                })
-            case .failed(let error):
-                print("Connection failed: \(error)")
-                connection.cancel()
-            default:
-                break
+    private func sendOverTCP(_ data: Data) {
+        guard let connection = tcpConnection, connection.state == .ready else {
+            if connectionStatus != .connected {
+                print("DEBUG: TCP not connected, attempting reconnect")
+                connectToMac()
             }
+            return
         }
         
-        connection.start(queue: .global(qos: .userInitiated))
+        var length = UInt32(data.count).bigEndian
+        var packetData = Data(bytes: &length, count: 4)
+        packetData.append(data)
+        
+        connection.send(content: packetData, completion: .contentProcessed { error in
+            if let error = error {
+                print("DEBUG: TCP send error: \(error)")
+            }
+        })
     }
     
     private func sendOverPeerTalk(_ data: Data) {

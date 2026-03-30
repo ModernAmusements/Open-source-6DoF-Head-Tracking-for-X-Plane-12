@@ -22,8 +22,9 @@
 LidarSight XP enables immersive cockpit exploration in X-Plane 12 using your iPhone as a head-tracking device. Simply mount your iPhone on a tripod facing you, and your head movements translate into real-time cockpit view changes.
 
 This project provides:
-- **iOS App** - Face tracking via ARKit, sends pose data over WiFi UDP
+- **iOS App** - Face tracking via ARKit, sends pose data over WiFi TCP
 - **macOS Plugin** - Receives tracking data, applies smoothing, writes to X-Plane datarefs
+- **macOS Debugger** - Standalone app to test head tracking without X-Plane
 
 **Author:** Shady Tawfik
 
@@ -33,7 +34,7 @@ This project provides:
 
 - **6DoF Head Tracking** - Full position (X, Y, Z) and rotation (pitch, yaw, roll)
 - **Eye Tracking** - Three modes: Head Only, Eyes Only, Head + Eyes (30% eye fine control)
-- **WiFi UDP** - UDP broadcast on port 4242
+- **WiFi TCP** - TCP connection on port 4243 with UDP forward to 4242
 - **One Euro Filter** - Smooth motion with adaptive cutoff for jitter-free tracking
 - **Liquid Glass UI** - Native iOS glassmorphism interface
 - **Auto-Calibration** - One-tap center alignment
@@ -103,7 +104,9 @@ make
 
 3. **Connect:**
    - Ensure iPhone and Mac on same WiFi network
-   - App broadcasts on port 4242
+   - Set your Mac's IP in iOS app Settings > Connection
+   - App connects via TCP on port 4243
+   - Plugin forwards to UDP 4242 for X-Plane native / OpenTrack
 
 ### Calibration
 
@@ -150,25 +153,38 @@ flowchart TB
         D -->|Protocol| G[OpenTrack Protocol]
         E --> F
         E --> G
-        F --> H[UDP Broadcast]
+        F --> H[TCP Client]
         G --> H
     end
 
-    subgraph Mac["Mac (X-Plane Plugin)"]
-        I[UDP Server :4242] --> J[One Euro Filter]
-        J --> K[Auto-Zero on First Pose]
-        K --> L[Non-Linear Curve Mapping]
-        L --> M[Delta Clamping]
-        M --> N[Dataref Writer]
+    subgraph Mac["Mac"]
+        subgraph Plugin["X-Plane Plugin"]
+            I[TCP Server :4243] --> J[One Euro Filter]
+            J --> K[Auto-Zero on First Pose]
+            K --> L[Non-Linear Curve Mapping]
+            L --> M[Delta Clamping]
+            M --> N[Dataref Writer]
+            N --> O[UDP Forward :4242]
+        end
+        
+        subgraph Debugger["Head Tracker Debugger"]
+            P[TCP Listener :4243] --> Q[One Euro Filter]
+            Q --> R[3D Windshield Display]
+        end
     end
 
-    H -->|WiFi UDP 255.255.255.255| I
-    N -->|sim/aircraft/view/acf_peX/Y/Z| O[X-Plane 12]
-    N -->|sim/graphics/view/pilots_head_phi| O
+    H -->|WiFi TCP| I
+    H -->|WiFi TCP| P
+    I -.->|same data| P
+    N -->|sim/aircraft/view/acf_peX/Y/Z| S[X-Plane 12]
+    N -->|sim/graphics/view/pilots_head_phi| S
+    O -->|UDP broadcast| T[Other Apps / OpenTrack]
 
     style H fill:#f9f,color:#333
     style I fill:#f9f,color:#333
+    style P fill:#9cf,color:#333
     style N fill:#9f9,color:#333
+    style O fill:#ff9,color:#333
 ```
 
 ### Components
@@ -178,13 +194,21 @@ flowchart TB
 - **Face Anchor Extractor** - Gets transform matrix from face
 - **Transform Converter** - Converts simd_float4x4 to Euler angles
 - **Calibration Manager** - Stores/manages center offset
-- **Transport Layer** - UDP broadcast on port 4242
+- **Transport Layer** - TCP connection on port 4243
 
 #### macOS Plugin
-- **UDP Server** - Listens on port 4242
+- **TCP Server** - Listens on port 4243
 - **One Euro Filter** - Signal smoothing (fc_min=30Hz, beta=0.6)
 - **Atomic Triple-Buffer** - Thread-safe pose exchange
 - **Dataref Writer** - Writes to X-Plane head position datarefs
+- **UDP Forwarder** - Broadcasts received data on UDP 4242 for other apps
+
+#### macOS Debugger
+- **TCP Listener** - Listens on port 4243
+- **One Euro Filter** - Same smoothing as plugin
+- **3D Windshield** - Visualizes head pose in real-time
+- **Values Panel** - Shows raw/filtered/output values
+- **Settings Panel** - Adjust filter parameters
 
 ### X-Plane Datarefs
 
@@ -223,7 +247,7 @@ struct HeadPosePacket {
 | Head position drifts | Tap "Recenter" to reset |
 | Plugin not visible in X-Plane | Ensure X-Plane 12.0.3 or later, check Log.txt for errors |
 | WiFi not connecting | Ensure iPhone and Mac on same network |
-| UDP Error 22 | App will request local network permission - allow it |
+| Connection refused | Check firewall allows TCP port 4243 and UDP 4242 |
 | Works in external view | Normal - only affects cockpit view 1017 |
 
 ---
@@ -333,7 +357,7 @@ Restart X-Plane after installation. The plugin will appear under `Plugins → Li
 
 | Metric | Target |
 |--------|--------|
-| Latency (WiFi) | ~30-50ms |
+| Latency (WiFi) | ~20-40ms |
 | Jitter | < 0.05mm (filtered) |
 | Frame Rate | 60Hz (30Hz thermal throttle) |
 
@@ -341,10 +365,9 @@ Restart X-Plane after installation. The plugin will appear under `Plugins → Li
 
 ## Known Limitations
 
-- WiFi UDP may have latency spikes
+- WiFi TCP connection may have latency spikes
 - Only works in cockpit view (view type 1017)
 - Range limited by aircraft 3D model
-- USB (PeerTalk) transport not yet implemented
 
 ---
 
