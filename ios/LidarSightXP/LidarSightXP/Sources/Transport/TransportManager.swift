@@ -94,6 +94,7 @@ class TransportManager: ObservableObject {
     }
     
     func requestLocalNetworkPermission(completion: @escaping () -> Void) {
+        print("DEBUG: requestLocalNetworkPermission called")
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
         
@@ -102,6 +103,7 @@ class TransportManager: ObservableObject {
         browser?.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
+                print("DEBUG: Browser ready - permission granted!")
                 DispatchQueue.main.async {
                     self?.needsLocalNetworkPermission = false
                     completion()
@@ -126,6 +128,7 @@ class TransportManager: ObservableObject {
     }
     
     func startUDPServer() {
+        print("DEBUG: startUDPServer called")
         connectionStatus = .connected
         updateLocalIP()
         setupBroadcastConnection()
@@ -171,7 +174,10 @@ class TransportManager: ObservableObject {
     }
     
     func sendPose(_ pose: HeadPose) {
-        guard connectionStatus == .connected || isUSBConnected else { return }
+        guard connectionStatus == .connected || isUSBConnected else {
+            print("DEBUG: sendPose skipped - connectionStatus=\(connectionStatus), isUSBConnected=\(isUSBConnected)")
+            return
+        }
         
         guard pose.isValid else {
             hasFirstPose = false
@@ -276,6 +282,7 @@ class TransportManager: ObservableObject {
         connection.stateUpdateHandler = { state in
             switch state {
             case .ready:
+                print("DEBUG: Sending packet to \(host):\(port), size=\(data.count)")
                 connection.send(content: data, completion: .contentProcessed { error in
                     if let error = error {
                         print("Send error: \(error)")
