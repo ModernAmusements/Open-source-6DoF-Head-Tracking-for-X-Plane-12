@@ -12,6 +12,13 @@ class ARTrackingManager: NSObject, ObservableObject {
     @Published var thermalState: ProcessInfo.ThermalState = .nominal
     @Published var trackingMode: TrackingMode = .headOnly
     
+    private var lastAnchorUpdateTime: Date = Date()
+    private var consecutiveSamePoseCount: Int = 0
+    private var lastProcessedRotation: SIMD3<Float> = .zero
+    private var stuckDetectionTimer: Timer?
+    private var lastSendTime: Date = Date()
+    private var noDataTimer: Timer?
+    
     private var session: ARSession?
     var arSession: ARSession? { session }
     private var faceConfiguration: ARFaceTrackingConfiguration?
@@ -120,6 +127,23 @@ class ARTrackingManager: NSObject, ObservableObject {
         session?.run(config)
         
         isTracking = true
+        
+        noDataTimer?.invalidate()
+        noDataTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.checkAndForceSend()
+            }
+        }
+    }
+    
+    private func checkAndForceSend() {
+        guard isTracking && currentPose.isValid else { return }
+        
+        let timeSinceLastSend = Date().timeIntervalSince(lastSendTime)
+        
+        if timeSinceLastSend > 0.05 {
+            forceSendPose()
+        }
     }
     
     private func startLidarTracking() {
@@ -157,6 +181,28 @@ class ARTrackingManager: NSObject, ObservableObject {
         isTracking = false
         isFaceDetected = false
         currentPose = HeadPose(isValid: false)
+        lastProcessedRotation = .zero
+        consecutiveSamePoseCount = 0
+        noDataTimer?.invalidate()
+        noDataTimer = nil
+    }
+    
+    private func restartTracking() {
+        guard trackingMode == .headOnly || trackingMode == .eyesOnly || trackingMode == .headAndEyes else {
+            return
+        }
+        
+        session?.pause()
+        
+        let config = ARFaceTrackingConfiguration()
+        config.isLightEstimationEnabled = true
+        config.maximumNumberOfTrackedFaces = 1
+        
+        faceConfiguration = config
+        session?.delegate = self
+        session?.run(config)
+        
+        print("DEBUG ARKit: Session restarted")
     }
     
     private func processFaceAnchor(_ anchor: ARFaceAnchor) {
@@ -164,8 +210,11 @@ class ARTrackingManager: NSObject, ObservableObject {
         
         guard anchor.isTracked else {
             currentPose = HeadPose(isValid: false)
+            print("DEBUG processFaceAnchor: face NOT tracked")
             return
         }
+        
+        print("DEBUG processFaceAnchor: face IS tracked, processing...")
         
         let transform = anchor.transform
         
@@ -176,6 +225,29 @@ class ARTrackingManager: NSObject, ObservableObject {
         )
         
         let rotation = extractEulerAngles(from: transform)
+        
+        print("DEBUG ARKit: raw position=(\(position.x), \(position.y), \(position.z)) rotation=(\(rotation.x), \(rotation.y), \(rotation.z))")
+        
+        let timeSinceLastUpdate = Date().timeIntervalSince(lastAnchorUpdateTime)
+        lastAnchorUpdateTime = Date()
+        
+        if abs(rotation.x - lastProcessedRotation.x) < 0.01 &&
+           abs(rotation.y - lastProcessedRotation.y) < 0.01 &&
+           abs(rotation.z - lastProcessedRotation.z) < 0.01 {
+            consecutiveSamePoseCount += 1
+            
+            if consecutiveSamePoseCount > 60 {
+                print("DEBUG ARKit: STUCK at \(consecutiveSamePoseCount) frames - rotation unchanged")
+                consecutiveSamePoseCount = 0
+                restartTracking()
+            }
+        } else {
+            if consecutiveSamePoseCount > 0 {
+                print("DEBUG ARKit: RESUMED after \(consecutiveSamePoseCount) stuck frames, new rotation=(\(rotation.x), \(rotation.y), \(rotation.z))")
+            }
+            consecutiveSamePoseCount = 0
+        }
+        lastProcessedRotation = rotation
         
         var eyeRotation: SIMD3<Float>?
         
@@ -199,9 +271,16 @@ class ARTrackingManager: NSObject, ObservableObject {
         currentPose = pose
         packetId += 1
         
+        lastSendTime = Date()
+        
         onPoseUpdate?(pose)
         
         transportManager?.sendPose(pose)
+    }
+    
+    func forceSendPose() {
+        guard currentPose.isValid else { return }
+        transportManager?.sendPose(currentPose)
     }
     
     private func extractEyeRotation(from anchor: ARFaceAnchor) -> SIMD3<Float> {
@@ -279,9 +358,51 @@ extension ARTrackingManager: ARSessionDelegate {
         }
     }
     
+    nonisolated func session(_ session: ARSession, didFailWithError error: Error) {
+        Task { @MainActor in
+            print("DEBUG ARSession failed: \(error.localizedDescription)")
+        }
+    }
+    
+    nonisolated func sessionWasInterrupted(_ session: ARSession) {
+        Task { @MainActor in
+            print("DEBUG ARSession was interrupted")
+        }
+    }
+    
+    nonisolated func sessionInterruptionEnded(_ session: ARSession) {
+        Task { @MainActor in
+            print("DEBUG ARSession interruption ended")
+            self.startTracking()
+        }
+    }
+    
     nonisolated func session(_ session: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
         Task { @MainActor in
             self.trackingState = camera.trackingState
+            let stateDesc: String
+            switch camera.trackingState {
+            case .notAvailable:
+                stateDesc = "notAvailable"
+            case .limited(let reason):
+                switch reason {
+                case .excessiveMotion:
+                    stateDesc = "limited(excessiveMotion)"
+                case .insufficientFeatures:
+                    stateDesc = "limited(insufficientFeatures)"
+                case .initializing:
+                    stateDesc = "limited(initializing)"
+                case .relocalizing:
+                    stateDesc = "limited(relocalizing)"
+                @unknown default:
+                    stateDesc = "limited(unknown)"
+                }
+            case .normal:
+                stateDesc = "normal"
+            @unknown default:
+                stateDesc = "unknown"
+            }
+            print("DEBUG Camera tracking state: \(stateDesc)")
         }
     }
 }

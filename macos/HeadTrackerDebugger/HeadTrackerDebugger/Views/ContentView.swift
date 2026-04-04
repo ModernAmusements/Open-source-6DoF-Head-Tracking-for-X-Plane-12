@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Foundation
 
 class HeadTrackerViewModel: ObservableObject {
     @Published var rawPitch: Float = 0
@@ -59,9 +60,7 @@ class HeadTrackerViewModel: ObservableObject {
             .assign(to: &$errorMessage)
         
         listener.onPacketReceived = { [weak self] packet in
-            DispatchQueue.main.async {
-                self?.processPacket(packet)
-            }
+            self?.processPacket(packet)
         }
         
         listener.start(port: UInt16(settings.listenPort))
@@ -124,6 +123,8 @@ class HeadTrackerViewModel: ObservableObject {
             var offsetYaw = self.filteredYaw - self.poseOffset.yaw
             var offsetRoll = self.filteredRoll - self.poseOffset.roll
             
+            print("DEBUG processPacket: filtered=(\(self.filteredPitch), \(self.filteredYaw), \(self.filteredRoll)) offset=(\(self.poseOffset.pitch), \(self.poseOffset.yaw), \(self.poseOffset.roll)) hasInitialPose=\(self.hasInitialPose)")
+            
             if !self.hasInitialPose {
                 self.hasInitialPose = true
                 self.poseOffset.pitch = self.filteredPitch
@@ -132,7 +133,10 @@ class HeadTrackerViewModel: ObservableObject {
                 offsetPitch = 0
                 offsetYaw = 0
                 offsetRoll = 0
+                print("DEBUG processPacket: Initial pose set, output will be zero this frame")
             }
+            
+            print("DEBUG processPacket: applying curve to offset=(\(offsetPitch), \(offsetYaw), \(offsetRoll))")
             
             self.outputPitch = self.applyCurve(offsetPitch, config: self.settings.tracking.pitch)
             self.outputYaw = self.applyCurve(offsetYaw, config: self.settings.tracking.yaw)
@@ -207,7 +211,8 @@ struct ContentView: View {
                     isConnected: viewModel.isConnected,
                     protocol_: viewModel.detectedProtocol,
                     packetRate: viewModel.packetRate,
-                    errorMessage: viewModel.errorMessage
+                    errorMessage: viewModel.errorMessage,
+                    port: viewModel.settings.listenPort
                 )
                 
                 ValuesPanel(

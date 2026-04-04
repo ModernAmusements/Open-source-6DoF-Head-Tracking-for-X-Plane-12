@@ -18,10 +18,10 @@ class TCPListener: ObservableObject {
     private var lastRateUpdate: Date = Date()
     private var packetsInLastSecond: Int = 0
     
-    private var port: UInt16 = 4243
+    private var port: UInt16 = 4242
     private var receiveBuffer = Data()
     
-    func start(port: UInt16 = 4243) {
+    func start(port: UInt16 = 4242) {
         self.port = port
         stop()
         
@@ -37,33 +37,42 @@ class TCPListener: ObservableObject {
             let params = NWParameters.tcp
             params.allowLocalEndpointReuse = true
             
+            print("TCPListener: Creating NWListener...")
             listener = try NWListener(using: params, on: nwPort)
             
+            print("TCPListener: Setting up state handler...")
             listener?.stateUpdateHandler = { [weak self] state in
                 DispatchQueue.main.async {
+                    print("TCPListener: State changed to \(state)")
                     switch state {
                     case .ready:
                         self?.isConnected = true
                         self?.errorMessage = nil
-                        print("TCP Listener: Ready on port \(port)")
+                        print("TCP Listener: READY on port \(port)")
                     case .failed(let error):
                         self?.isConnected = false
                         self?.errorMessage = "Failed: \(error)"
-                        print("TCP Listener: Failed - \(error)")
+                        print("TCP Listener: FAILED - \(error)")
                     case .cancelled:
                         self?.isConnected = false
+                        print("TCP Listener: CANCELLED")
+                    case .waiting(let error):
+                        print("TCP Listener: WAITING - \(error)")
                     default:
                         break
                     }
                 }
             }
             
+            print("TCPListener: Setting new connection handler...")
             listener?.newConnectionHandler = { [weak self] connection in
                 print("TCP Listener: New connection from \(connection.endpoint)")
                 self?.handleNewConnection(connection)
             }
             
+            print("TCPListener: Starting listener...")
             listener?.start(queue: queue)
+            print("TCPListener: Listener started")
         } catch {
             errorMessage = "Failed to create listener: \(error.localizedDescription)"
             print("TCP Listener: Failed to create - \(error)")

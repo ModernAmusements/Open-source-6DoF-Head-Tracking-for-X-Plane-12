@@ -7,7 +7,11 @@ class TransportManager: ObservableObject {
     @Published var connectionStatus: ConnectionStatus = .disconnected
     @Published var isUSBConnected: Bool = false
     @Published var localIP: String = "0.0.0.0"
-    @Published var tcpPort: UInt16 = 4243
+    @Published var tcpPort: UInt16 = 4242 {
+        didSet {
+            print("DEBUG: tcpPort changed to \(tcpPort)")
+        }
+    }
     @Published var needsLocalNetworkPermission: Bool = false
     
     private var tcpConnection: NWConnection?
@@ -173,7 +177,12 @@ class TransportManager: ObservableObject {
         if !settings.targetIP.isEmpty && settings.targetIP != "0.0.0.0" {
             targetIP = settings.targetIP
         } else {
-            targetIP = getLocalNetworkIP()
+            let localIP = getLocalNetworkIP()
+            print("DEBUG: Device local IP: \(localIP)")
+            
+            connectionStatus = .error("Enter Mac IP in Settings")
+            print("DEBUG: No target IP configured. Please enter your Mac's IP in Settings.")
+            return
         }
         
         guard targetIP != "0.0.0.0" else {
@@ -192,7 +201,10 @@ class TransportManager: ObservableObject {
         
         tcpConnection = NWConnection(host: host, port: port, using: parameters)
         
+        print("DEBUG: Created TCP connection, setting up state handler...")
+        
         tcpConnection?.stateUpdateHandler = { [weak self] state in
+            print("DEBUG: TCP state changed: \(state)")
             DispatchQueue.main.async {
                 switch state {
                 case .ready:
@@ -203,16 +215,24 @@ class TransportManager: ObservableObject {
                     self?.connectionStatus = .error(error.localizedDescription)
                     self?.reconnectAfterDelay()
                 case .cancelled:
+                    print("DEBUG: TCP Cancelled")
                     self?.connectionStatus = .disconnected
                 case .waiting(let error):
                     print("DEBUG: TCP Waiting: \(error)")
+                case .setup:
+                    print("DEBUG: TCP Setup")
+                case .preparing:
+                    print("DEBUG: TCP Preparing")
                 default:
+                    print("DEBUG: TCP Unknown state: \(state)")
                     break
                 }
             }
         }
         
+        print("DEBUG: Starting TCP connection...")
         tcpConnection?.start(queue: connectionQueue)
+        print("DEBUG: TCP connection start called")
     }
     
     private func reconnectAfterDelay() {
@@ -312,9 +332,24 @@ class TransportManager: ObservableObject {
             
             // Note: calibration is already applied in ARTrackingManager via CalibrationManager
             // So we use pose.rotation directly (which is already relative to calibration)
-            let rawPitch = normalizeAngle(pose.rotation.x)
-            let rawYaw = normalizeAngle(pose.rotation.y)
-            let rawRoll = normalizeAngle(pose.rotation.z)
+            // However, if calibration wasn't applied, apply it here
+            let rawPitch: Float
+            let rawYaw: Float
+            let rawRoll: Float
+            
+            if calibrationOffset != CalibrationOffset() {
+                // Calibration already applied, use as-is
+                rawPitch = normalizeAngle(pose.rotation.x)
+                rawYaw = normalizeAngle(pose.rotation.y)
+                rawRoll = normalizeAngle(pose.rotation.z)
+            } else {
+                // Apply calibration manually
+                rawPitch = normalizeAngle(pose.rotation.x - calibrationOffset.rotation.x)
+                rawYaw = normalizeAngle(pose.rotation.y - calibrationOffset.rotation.y)
+                rawRoll = normalizeAngle(pose.rotation.z - calibrationOffset.rotation.z)
+            }
+            
+            print("DEBUG sendPose: raw pitch=\(rawPitch) yaw=\(rawYaw) roll=\(rawRoll), calibrationOffset=\(calibrationOffset.rotation)")
             
             let alpha = max(0.0, min(1.0, 1.0 - settings.smoothing))
             
@@ -328,6 +363,8 @@ class TransportManager: ObservableObject {
             packet.pitch = lastPitch + alpha * (rawPitch - lastPitch)
             packet.yaw = lastYaw + alpha * (rawYaw - lastYaw)
             packet.roll = lastRoll + alpha * (rawRoll - lastRoll)
+            
+            print("DEBUG sendPose: raw=(\(rawPitch), \(rawYaw), \(rawRoll)) -> smoothed=(\(packet.pitch), \(packet.yaw), \(packet.roll))")
             
             lastPitch = packet.pitch
             lastYaw = packet.yaw
@@ -353,7 +390,7 @@ class TransportManager: ObservableObject {
     
     private func sendOverTCP(_ data: Data) {
         guard let connection = tcpConnection, connection.state == .ready else {
-            print("DEBUG: TCP not ready, triggering reconnect")
+            print("DEBUG TCP not ready, triggering reconnect")
             connectionStatus = .disconnected
             reconnectAfterDelay()
             return
@@ -363,9 +400,11 @@ class TransportManager: ObservableObject {
         var packetData = Data(bytes: &length, count: 4)
         packetData.append(data)
         
-        connection.send(content: packetData, completion: .contentProcessed { error in
+        connection.send(content: packetData, completion: .contentProcessed { [weak self] error in
             if let error = error {
                 print("DEBUG: TCP send error: \(error)")
+                self?.connectionStatus = .disconnected
+                self?.reconnectAfterDelay()
             }
         })
     }

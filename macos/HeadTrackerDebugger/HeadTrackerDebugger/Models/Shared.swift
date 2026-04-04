@@ -71,9 +71,13 @@ struct ParsedPacket {
 
 struct DebuggerSettings: Codable {
     var tracking = TrackingSettings()
-    var listenPort: Int = 4243
+    var listenPort: Int = 4242
     
     static var `default`: DebuggerSettings { DebuggerSettings() }
+    
+    init() {
+        self.listenPort = 4242
+    }
     
     static func load() -> DebuggerSettings {
         let url = getSettingsURL()

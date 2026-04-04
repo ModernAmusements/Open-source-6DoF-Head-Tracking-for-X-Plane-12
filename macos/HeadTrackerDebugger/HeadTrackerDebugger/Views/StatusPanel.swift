@@ -6,6 +6,7 @@ struct StatusPanel: View {
     var protocol_: PacketProtocol
     var packetRate: Double
     var errorMessage: String?
+    var port: Int
     
     private var localIP: String {
         var address = "Unknown"
@@ -56,7 +57,7 @@ struct StatusPanel: View {
                 Text("Local IP:")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Text("\(localIP):4243")
+                Text("\(localIP):\(port)")
                     .font(.system(.caption, design: .monospaced))
                     .foregroundColor(.primary)
             }
@@ -99,8 +100,8 @@ struct StatusPanel: View {
 struct StatusPanel_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 16) {
-            StatusPanel(isConnected: true, protocol_: .openTrack, packetRate: 58.2, errorMessage: nil)
-            StatusPanel(isConnected: false, protocol_: .lidarSight, packetRate: 0, errorMessage: "Failed to bind socket")
+            StatusPanel(isConnected: true, protocol_: .openTrack, packetRate: 58.2, errorMessage: nil, port: 4242)
+            StatusPanel(isConnected: false, protocol_: .lidarSight, packetRate: 0, errorMessage: "Failed to bind socket", port: 4242)
         }
         .frame(width: 280)
         .padding()
