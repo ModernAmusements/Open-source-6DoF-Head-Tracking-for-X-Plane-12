@@ -123,7 +123,7 @@ class HeadTrackerViewModel: ObservableObject {
             var offsetYaw = self.filteredYaw - self.poseOffset.yaw
             var offsetRoll = self.filteredRoll - self.poseOffset.roll
             
-            print("DEBUG processPacket: filtered=(\(self.filteredPitch), \(self.filteredYaw), \(self.filteredRoll)) offset=(\(self.poseOffset.pitch), \(self.poseOffset.yaw), \(self.poseOffset.roll)) hasInitialPose=\(self.hasInitialPose)")
+            print("DEBUG processPacket: filtered=(\(self.filteredPitch), \(self.filteredYaw), \(self.filteredRoll)) offset=(\(offsetPitch), \(offsetYaw), \(offsetRoll)) hasInitialPose=\(self.hasInitialPose)")
             
             if !self.hasInitialPose {
                 self.hasInitialPose = true
@@ -133,7 +133,7 @@ class HeadTrackerViewModel: ObservableObject {
                 offsetPitch = 0
                 offsetYaw = 0
                 offsetRoll = 0
-                print("DEBUG processPacket: Initial pose set, output will be zero this frame")
+                print("DEBUG processPacket: First packet - set initial pose, output = zero (relative to initial)")
             }
             
             print("DEBUG processPacket: applying curve to offset=(\(offsetPitch), \(offsetYaw), \(offsetRoll))")
@@ -141,14 +141,24 @@ class HeadTrackerViewModel: ObservableObject {
             self.outputPitch = self.applyCurve(offsetPitch, config: self.settings.tracking.pitch)
             self.outputYaw = self.applyCurve(offsetYaw, config: self.settings.tracking.yaw)
             self.outputRoll = self.applyCurve(offsetRoll, config: self.settings.tracking.roll)
+            
+            print("DEBUG processPacket: OUTPUT=(\(self.outputPitch), \(self.outputYaw), \(self.outputRoll))")
         }
     }
     
     private func applyCurve(_ value: Float, config: AxisConfig) -> Float {
-        guard config.enabled else { return 0 }
+        guard config.enabled else { 
+            print("DEBUG applyCurve: axis disabled, returning 0")
+            return 0 
+        }
+        
+        print("DEBUG applyCurve: value=\(value) deadzone=\(config.deadzone) maxInput=\(config.maxInput) maxOutput=\(config.maxOutput) enabled=\(config.enabled)")
         
         let absVal = abs(value)
-        guard absVal >= config.deadzone else { return 0 }
+        guard absVal >= config.deadzone else { 
+            print("DEBUG applyCurve: \(absVal) < deadzone \(config.deadzone), returning 0")
+            return 0 
+        }
         
         let sign: Float = value > 0 ? 1 : -1
         let effectiveMaxInput = max(config.maxInput, config.deadzone + 0.1)
@@ -156,13 +166,14 @@ class HeadTrackerViewModel: ObservableObject {
         t = max(0, min(1, t))
         
         let curvePower = max(0.1, config.curvePower)
-        var tPowered = t
-        for _ in 0..<Int(curvePower * 10) {
-            tPowered *= t
-        }
+        let tPowered = pow(t, curvePower)
         
         let curved = config.deadzone + (config.maxOutput - config.deadzone) * tPowered
-        return sign * curved * (config.invert ? -1 : 1)
+        let result = sign * curved * (config.invert ? -1 : 1)
+        
+        print("DEBUG applyCurve: t=\(t) powered=\(tPowered) curved=\(curved) result=\(result)")
+        
+        return result
     }
 }
 
