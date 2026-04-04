@@ -16,6 +16,22 @@ struct LidarSightPacket {
     var isTrackingValid: Bool {
         (flags & 0x02) != 0
     }
+    
+    static func parse(from data: Data) -> LidarSightPacket? {
+        guard data.count >= size else { return nil }
+        
+        var packet = LidarSightPacket()
+        packet.packetId = data.subdata(in: 0..<4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        packet.flags = data.subdata(in: 4..<5).withUnsafeBytes { $0.load(as: UInt8.self) }
+        packet.timestampUs = data.subdata(in: 5..<9).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.x = data.subdata(in: 9..<13).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.y = data.subdata(in: 13..<17).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.z = data.subdata(in: 17..<21).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.pitch = data.subdata(in: 21..<25).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.yaw = data.subdata(in: 25..<29).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.roll = data.subdata(in: 29..<33).withUnsafeBytes { $0.load(as: Float.self) }
+        return packet
+    }
 }
 
 struct OpenTrackPacket {
@@ -27,6 +43,19 @@ struct OpenTrackPacket {
     var roll: Double = 0
     
     static let size = 48
+    
+    static func parse(from data: Data) -> OpenTrackPacket? {
+        guard data.count >= size else { return nil }
+        
+        var packet = OpenTrackPacket()
+        packet.x = data.subdata(in: 0..<8).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.y = data.subdata(in: 8..<16).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.z = data.subdata(in: 16..<24).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.pitch = data.subdata(in: 24..<32).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.yaw = data.subdata(in: 32..<40).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.roll = data.subdata(in: 40..<48).withUnsafeBytes { $0.load(as: Double.self) }
+        return packet
+    }
 }
 
 class PacketParser {
@@ -40,12 +69,7 @@ class PacketParser {
     }
     
     private static func parseLidarSight(_ data: Data) -> ParsedPacket? {
-        guard data.count >= LidarSightPacket.size else { return nil }
-        
-        var packet = LidarSightPacket()
-        _ = withUnsafeMutableBytes(of: &packet) { buffer in
-            data.copyBytes(to: buffer)
-        }
+        guard let packet = LidarSightPacket.parse(from: data) else { return nil }
         
         let pose = HeadPose(
             pitch: packet.pitch,
@@ -58,12 +82,7 @@ class PacketParser {
     }
     
     private static func parseOpenTrack(_ data: Data) -> ParsedPacket? {
-        guard data.count >= OpenTrackPacket.size else { return nil }
-        
-        var packet = OpenTrackPacket()
-        _ = withUnsafeMutableBytes(of: &packet) { buffer in
-            data.copyBytes(to: buffer)
-        }
+        guard let packet = OpenTrackPacket.parse(from: data) else { return nil }
         
         let pose = HeadPose(
             pitch: Float(packet.pitch * 180.0 / .pi),

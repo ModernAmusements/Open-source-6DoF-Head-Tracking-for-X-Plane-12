@@ -25,6 +25,10 @@ struct HeadPosePacket {
     float    pitch, yaw, roll;
 };
 
+#define FLAG_CALIBRATED    0x01
+#define FLAG_TRACKING_VALID 0x02
+#define FLAG_RECENTER      0x04
+
 struct FlightDataPacket {
     char     header[4];
     double   airspeed;
@@ -38,6 +42,7 @@ struct FlightDataPacket {
 
 #define OPENTRACK_PACKET_SIZE 48
 
+#pragma pack(push, 1)
 struct OpenTrackPacket {
     double x, y, z;
     double pitch, yaw, roll;

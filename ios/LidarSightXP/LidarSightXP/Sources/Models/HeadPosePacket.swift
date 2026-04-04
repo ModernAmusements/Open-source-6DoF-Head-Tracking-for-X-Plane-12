@@ -15,8 +15,23 @@ struct HeadPosePacket {
     static let size = 33
     
     enum Flag: UInt8 {
-        case calibrated = 0x01
-        case trackingValid = 0x02
+        case calibrated = 0x01      // Calibration has been applied
+        case trackingValid = 0x02   // Tracking data is valid
+        case recenter = 0x04         // Plugin should reset its offset
+    }
+    
+    func toData() -> Data {
+        var data = Data()
+        withUnsafeBytes(of: packetId.bigEndian) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: flags) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: timestampUs) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: x) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: y) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: z) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: pitch) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: yaw) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: roll) { data.append(contentsOf: $0) }
+        return data
     }
     
     mutating func setFlag(_ flag: Flag, _ value: Bool) {
@@ -31,18 +46,19 @@ struct HeadPosePacket {
         return (flags & flag.rawValue) != 0
     }
     
-    func toData() -> Data {
-        var packet = self
-        return Data(bytes: &packet, count: HeadPosePacket.size)
-    }
-    
     static func fromData(_ data: Data) -> HeadPosePacket? {
         guard data.count >= size else { return nil }
         
         var packet = HeadPosePacket()
-        _ = withUnsafeMutableBytes(of: &packet) { buffer in
-            data.copyBytes(to: buffer)
-        }
+        packet.packetId = data.subdata(in: 0..<4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        packet.flags = data.subdata(in: 4..<5).withUnsafeBytes { $0.load(as: UInt8.self) }
+        packet.timestampUs = data.subdata(in: 5..<9).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.x = data.subdata(in: 9..<13).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.y = data.subdata(in: 13..<17).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.z = data.subdata(in: 17..<21).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.pitch = data.subdata(in: 21..<25).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.yaw = data.subdata(in: 25..<29).withUnsafeBytes { $0.load(as: Float.self) }
+        packet.roll = data.subdata(in: 29..<33).withUnsafeBytes { $0.load(as: Float.self) }
         return packet
     }
 }
@@ -75,9 +91,11 @@ struct OpenTrackPacket {
             return a
         }
         
-        let rawPitch = normalizeAngle(pose.rotation.x - calibration.rotation.x)
-        let rawYaw = normalizeAngle(pose.rotation.y - calibration.rotation.y)
-        let rawRoll = normalizeAngle(pose.rotation.z - calibration.rotation.z)
+        // Note: calibration is already applied in ARTrackingManager via CalibrationManager
+        // So we use pose.rotation directly (which is already relative to calibration)
+        let rawPitch = normalizeAngle(pose.rotation.x)
+        let rawYaw = normalizeAngle(pose.rotation.y)
+        let rawRoll = normalizeAngle(pose.rotation.z)
         
         self.x = 0
         self.y = 0

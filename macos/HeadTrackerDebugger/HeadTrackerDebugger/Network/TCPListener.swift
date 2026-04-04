@@ -30,7 +30,8 @@ class TCPListener: ObservableObject {
         
         let nwPort = NWEndpoint.Port(rawValue: port)!
         
-        print("TCPListener: Starting on port \(port)")
+        print("TCPListener: Starting server on port \(port)")
+        print("TCPListener: Server type = TCP (not UDP)")
         
         do {
             let params = NWParameters.tcp
@@ -70,23 +71,25 @@ class TCPListener: ObservableObject {
     }
     
     private func handleNewConnection(_ connection: NWConnection) {
+        print("TCPListener: Handling new connection from \(connection.endpoint)")
         clientConnection?.cancel()
         clientConnection = connection
         
         connection.stateUpdateHandler = { [weak self] state in
+            print("TCPListener: Connection state changed: \(state)")
             switch state {
             case .ready:
-                print("TCP Listener: Client connected")
+                print("TCPListener: Client READY - receiving data")
                 DispatchQueue.main.async {
                     self?.isConnected = true
                 }
             case .failed(let error):
-                print("TCP Listener: Client failed - \(error)")
+                print("TCPListener: Client FAILED - \(error)")
                 DispatchQueue.main.async {
                     self?.isConnected = false
                 }
             case .cancelled:
-                print("TCP Listener: Client disconnected")
+                print("TCPListener: Client DISCONNECTED")
                 DispatchQueue.main.async {
                     self?.isConnected = false
                 }
@@ -112,36 +115,65 @@ class TCPListener: ObservableObject {
     }
     
     private func receiveData(from connection: NWConnection) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
+        print("TCPListener: Starting receive loop...")
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, context, isComplete, error in
+            if let error = error {
+                print("TCPListener: Receive ERROR - \(error)")
+                DispatchQueue.main.async {
+                    self?.isConnected = false
+                }
+                return
+            }
+            
             if let data = data, !data.isEmpty {
-                print("TCP Listener: Received \(data.count) bytes")
+                print("TCPListener: Received \(data.count) bytes")
+                print("TCPListener: First 16 bytes hex: \(data.prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
                 self?.receiveBuffer.append(data)
                 self?.processBuffer()
             }
             
-            if let error = error {
-                print("TCP Listener: Receive error: \(error)")
+            if isComplete {
+                print("TCPListener: Connection completed (closed)")
+                DispatchQueue.main.async {
+                    self?.isConnected = false
+                }
+                return
             }
             
-            if !isComplete && error == nil {
-                self?.receiveData(from: connection)
-            }
+            // Continue receiving
+            self?.receiveData(from: connection)
         }
     }
     
     private func processBuffer() {
-        while receiveBuffer.count >= 4 {
-            let lengthData = receiveBuffer.subdata(in: 0..<4)
-            let length = lengthData.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
-            
-            guard receiveBuffer.count >= 4 + Int(length) else {
-                break
-            }
-            
-            let packetData = receiveBuffer.subdata(in: 4..<(4 + Int(length)))
-            receiveBuffer.removeSubrange(0..<(4 + Int(length)))
-            
-            handleReceivedData(packetData)
+        print("TCPListener: Buffer size = \(receiveBuffer.count) bytes")
+        
+        // If data is too small for length prefix, wait for more
+        guard receiveBuffer.count >= 4 else {
+            print("TCPListener: Waiting for more data (need 4 bytes for length)")
+            return
+        }
+        
+        let lengthData = receiveBuffer.subdata(in: 0..<4)
+        let length = lengthData.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        
+        print("TCPListener: Packet length prefix = \(length) bytes")
+        
+        guard receiveBuffer.count >= 4 + Int(length) else {
+            print("TCPListener: Have \(receiveBuffer.count) bytes, need \(4 + Int(length)) - waiting for more")
+            return
+        }
+        
+        let packetData = receiveBuffer.subdata(in: 4..<(4 + Int(length)))
+        receiveBuffer.removeSubrange(0..<(4 + Int(length)))
+        
+        print("TCPListener: Extracted \(packetData.count) bytes, remaining = \(receiveBuffer.count)")
+        
+        handleReceivedData(packetData)
+        
+        // Process any remaining data
+        if receiveBuffer.count >= 4 {
+            processBuffer()
         }
     }
     
@@ -150,6 +182,31 @@ class TCPListener: ObservableObject {
         
         guard let packet = PacketParser.parse(data) else { 
             print("TCPListener: Failed to parse packet, size = \(data.count)")
+            // Maybe the packet doesn't have a length prefix - try without
+            if data.count >= 33 && data.count < 50 {
+                let directData = data.prefix(33)
+                if let directPacket = PacketParser.parse(Data(directData)) {
+                    print("TCPListener: Direct parse succeeded! pitch=\(directPacket.pose.pitch)")
+                    DispatchQueue.main.async { [weak self] in
+                        self?.lastPacket = directPacket
+                        self?.detectedProtocol = directPacket.packetProtocol
+                        self?.packetCount += 1
+                        self?.packetsInLastSecond += 1
+                        
+                        let now = Date()
+                        let elapsed = now.timeIntervalSince(self?.lastRateUpdate ?? now)
+                        if elapsed >= 1.0 {
+                            self?.packetRate = Double(self?.packetsInLastSecond ?? 0)
+                            self?.packetsInLastSecond = 0
+                            self?.lastRateUpdate = now
+                        }
+                        
+                        self?.onPacketReceived?(directPacket)
+                    }
+                } else {
+                    print("TCPListener: Direct parse also failed")
+                }
+            }
             return 
         }
         

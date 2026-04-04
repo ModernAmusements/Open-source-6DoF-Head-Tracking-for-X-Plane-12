@@ -73,11 +73,37 @@ class TransportManager: ObservableObject {
         )
         setCalibration(offset)
         saveCalibration()
+        sendRecenterPacket()
     }
     
     func resetCalibration() {
         setCalibration(CalibrationOffset())
         saveCalibration()
+        sendRecenterPacket()
+    }
+    
+    private func sendRecenterPacket() {
+        guard connectionStatus == .connected || isUSBConnected else { return }
+        
+        var packet = HeadPosePacket()
+        packet.packetId = 0
+        packet.timestampUs = 0
+        packet.pitch = 0
+        packet.yaw = 0
+        packet.roll = 0
+        packet.setFlag(.recenter, true)
+        packet.setFlag(.trackingValid, true)
+        
+        let data = packet.toData()
+        
+        if isUSBConnected {
+            sendOverPeerTalk(data)
+        } else {
+            sendOverTCP(data)
+        }
+        
+        hasFirstPose = false
+        print("DEBUG: Sent recenter packet to plugin")
     }
     
     func saveCalibration() {
@@ -284,9 +310,11 @@ class TransportManager: ObservableObject {
                 return a
             }
             
-            let rawPitch = normalizeAngle(pose.rotation.x - calibrationOffset.rotation.x)
-            let rawYaw = normalizeAngle(pose.rotation.y - calibrationOffset.rotation.y)
-            let rawRoll = normalizeAngle(pose.rotation.z - calibrationOffset.rotation.z)
+            // Note: calibration is already applied in ARTrackingManager via CalibrationManager
+            // So we use pose.rotation directly (which is already relative to calibration)
+            let rawPitch = normalizeAngle(pose.rotation.x)
+            let rawYaw = normalizeAngle(pose.rotation.y)
+            let rawRoll = normalizeAngle(pose.rotation.z)
             
             let alpha = max(0.0, min(1.0, 1.0 - settings.smoothing))
             
@@ -325,10 +353,9 @@ class TransportManager: ObservableObject {
     
     private func sendOverTCP(_ data: Data) {
         guard let connection = tcpConnection, connection.state == .ready else {
-            if connectionStatus != .connected {
-                print("DEBUG: TCP not connected, attempting reconnect")
-                connectToMac()
-            }
+            print("DEBUG: TCP not ready, triggering reconnect")
+            connectionStatus = .disconnected
+            reconnectAfterDelay()
             return
         }
         

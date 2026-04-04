@@ -92,10 +92,11 @@ void LidarSightXP::start()
     snprintf(dirPath, sizeof(dirPath), "%sLidarSightXP", sysPath);
     mkdir(dirPath, 0755);
     
+    loadConfig();
+    
     mRunning = true;
     mLastFrameTime = DEFAULT_DT;
     
-    loadConfig();
     mRotationFilter.setParameters(mConfig.filterMinCutoff, mConfig.filterBeta, mConfig.filterDCutoff);
     
     registerDatarefs();
@@ -149,6 +150,10 @@ float LidarSightXP::flightLoopCallbackStub(
 
 void LidarSightXP::flightLoopCallback()
 {
+    if (!mRunning) {
+        return;
+    }
+    
     checkViewType();
     
     if (!mIsEnabled || !mInCockpitView) {
@@ -368,10 +373,17 @@ void LidarSightXP::saveConfig()
 
 void LidarSightXP::registerDatarefs()
 {
+    DEBUG_LOG("Registering datarefs...");
+    
     mHeadPitch = XPLMFindDataRef("sim/graphics/view/pilots_head_the");
     mHeadYaw = XPLMFindDataRef("sim/graphics/view/pilots_head_psi");
     mHeadRoll = XPLMFindDataRef("sim/graphics/view/pilots_head_phi");
     mViewType = XPLMFindDataRef("sim/graphics/view/view_type");
+    
+    if (!mHeadPitch) DEBUG_LOG("WARNING: pitch dataref not found");
+    if (!mHeadYaw) DEBUG_LOG("WARNING: yaw dataref not found");
+    if (!mHeadRoll) DEBUG_LOG("WARNING: roll dataref not found");
+    if (!mViewType) DEBUG_LOG("WARNING: view_type dataref not found");
     
     mAirspeed = XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed");
     mAltitude = XPLMFindDataRef("sim/flightmodel/position/elevation");
@@ -571,6 +583,13 @@ void LidarSightXP::startNetwork()
                         int writeIdx = mWriteBuffer.load();
                         mPoseBuffers[writeIdx] = packet;
                         
+                        if (packet.flags & FLAG_RECENTER) {
+                            DEBUG_LOG("RX: Recenter packet received, resetting offset");
+                            mHasInitialPose = false;
+                            mPoseOffset = HeadPosePacket();
+                            mRotationFilter.setParameters(mConfig.filterMinCutoff, mConfig.filterBeta, mConfig.filterDCutoff);
+                        }
+                        
                         if (mUdpForwardSock >= 0) {
                             sockaddr_in broadcastAddr;
                             memset(&broadcastAddr, 0, sizeof(broadcastAddr));
@@ -583,7 +602,33 @@ void LidarSightXP::startNetwork()
                         
                         int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
                         mWriteBuffer.store(nextBuffer);
-                    } else if (packetLen != PACKET_SIZE) {
+                    } else if (packetLen == OPENTRACK_PACKET_SIZE && receiveBuffer.size() >= 4 + OPENTRACK_PACKET_SIZE) {
+                        OpenTrackPacket opPacket;
+                        memcpy(&opPacket, receiveBuffer.data() + 4, OPENTRACK_PACKET_SIZE);
+                        receiveBuffer.erase(receiveBuffer.begin(), receiveBuffer.begin() + 4 + OPENTRACK_PACKET_SIZE);
+                        
+                        HeadPosePacket packet;
+                        packet.packet_id = 0;
+                        packet.flags = 0x02;
+                        packet.timestamp_us = 0;
+                        packet.x = 0;
+                        packet.y = 0;
+                        packet.z = 0;
+                        packet.pitch = static_cast<float>(opPacket.pitch * 180.0 / M_PI);
+                        packet.yaw = static_cast<float>(opPacket.yaw * 180.0 / M_PI);
+                        packet.roll = static_cast<float>(opPacket.roll * 180.0 / M_PI);
+                        
+                        DEBUG_LOG("RX: OpenTrack converted to LidarSight");
+                        
+                        int writeIdx = mWriteBuffer.load();
+                        mPoseBuffers[writeIdx] = packet;
+                        int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
+                        mWriteBuffer.store(nextBuffer);
+                    } else if (packetLen != PACKET_SIZE && packetLen != OPENTRACK_PACKET_SIZE) {
+                        DEBUG_LOG("Unknown packet length, clearing buffer");
+                        receiveBuffer.clear();
+                        break;
+                    } else {
                         break;
                     }
                 }
