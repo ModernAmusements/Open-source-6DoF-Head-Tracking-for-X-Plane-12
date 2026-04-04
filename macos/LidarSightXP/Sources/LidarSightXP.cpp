@@ -126,6 +126,7 @@ void LidarSightXP::stop()
     
     XPLMUnregisterFlightLoopCallback(flightLoopCallbackStub, this);
     stopNetwork();
+    stopFlightData();
     
     DEBUG_LOG("Plugin stopped");
 }
@@ -714,4 +715,16 @@ void LidarSightXP::sendFlightData()
     
     sendto(mFlightDataSock, &packet, sizeof(packet), 0, 
            (sockaddr*)&destAddr, sizeof(destAddr));
+}
+
+void LidarSightXP::stopFlightData()
+{
+    if (mFlightDataThread.joinable()) {
+        mFlightDataThread.join();
+    }
+    if (mFlightDataSock >= 0) {
+        close(mFlightDataSock);
+        mFlightDataSock = -1;
+    }
+    DEBUG_LOG("Flight data thread stopped");
 }

@@ -153,38 +153,53 @@ flowchart TB
         D -->|Protocol| G[OpenTrack Protocol]
         E --> F
         E --> G
-        F --> H[TCP Client]
+        F --> H[TCP Client :4243]
         G --> H
+        H --> I[Length Prefix (4 bytes)]
+        I --> J[33-byte Packet]
     end
 
     subgraph Mac["Mac"]
         subgraph Plugin["X-Plane Plugin"]
-            I[TCP Server :4243] --> J[One Euro Filter]
-            J --> K[Auto-Zero on First Pose]
-            K --> L[Non-Linear Curve Mapping]
-            L --> M[Delta Clamping]
-            M --> N[Dataref Writer]
-            N --> O[UDP Forward :4242]
+            K[TCP Server :4243] --> L[Length Prefix Parser]
+            L --> M[Packet Parser]
+            M --> N{LidarSight?}
+            M --> O{OpenTrack?}
+            N -->|33 bytes| P[One Euro Filter]
+            O -->|48 bytes| Q[Convert to LidarSight]
+            Q --> P
+            P --> R[Auto-Zero on First Pose]
+            R --> S{Calibration Sync?}
+            S -->|Flag 0x04| T[Reset Offset]
+            S -->|Normal| U[Non-Linear Curve Mapping]
+            T --> V[Delta Clamping]
+            U --> V
+            V --> W[Dataref Writer]
+            W --> X[UDP Forward :4242]
         end
         
         subgraph Debugger["Head Tracker Debugger"]
-            P[TCP Listener :4243] --> Q[One Euro Filter]
-            Q --> R[3D Windshield Display]
+            Y[TCP Listener :4243] --> Z[Length Prefix Parser]
+            Z --> AA[Packet Parser]
+            AA --> AB[One Euro Filter]
+            AB --> AC[3D Windshield Display]
         end
     end
 
-    H -->|WiFi TCP| I
-    H -->|WiFi TCP| P
-    I -.->|same data| P
-    N -->|sim/aircraft/view/acf_peX/Y/Z| S[X-Plane 12]
-    N -->|sim/graphics/view/pilots_head_phi| S
-    O -->|UDP broadcast| T[Other Apps / OpenTrack]
-
+    J -->|WiFi TCP| K
+    J -->|WiFi TCP| Y
+    K -.->|same data| Y
+    W -->|sim/graphics/view/pilots_head_the| AD[X-Plane 12]
+    W -->|sim/graphics/view/pilots_head_psi| AD
+    W -->|sim/graphics/view/pilots_head_phi| AD
+    X -->|UDP broadcast| AE[Other Apps / OpenTrack]
+    
     style H fill:#f9f,color:#333
-    style I fill:#f9f,color:#333
-    style P fill:#9cf,color:#333
-    style N fill:#9f9,color:#333
-    style O fill:#ff9,color:#333
+    style K fill:#f9f,color:#333
+    style Y fill:#9cf,color:#333
+    style W fill:#9f9,color:#333
+    style X fill:#ff9,color:#333
+    style T fill:#f66,color:#333
 ```
 
 ### Components
@@ -193,13 +208,19 @@ flowchart TB
 - **ARKit Session** - `ARFaceTrackingConfiguration` at 60fps
 - **Face Anchor Extractor** - Gets transform matrix from face
 - **Transform Converter** - Converts simd_float4x4 to Euler angles
-- **Calibration Manager** - Stores/manages center offset
-- **Transport Layer** - TCP connection on port 4243
+- **Calibration Manager** - Stores/manages center offset, applies on each pose
+- **Manual Serialization** - Explicit byte-by-byte packet construction (no struct padding)
+- **Transport Layer** - TCP connection on port 4243 with 4-byte length prefix
+- **Smoothing** - EMA filter with configurable alpha (1 - smoothing)
+- **Recenter Packet** - Sends flag 0x04 when user calibrates to sync with plugin
 
 #### macOS Plugin
 - **TCP Server** - Listens on port 4243
-- **One Euro Filter** - Signal smoothing (fc_min=30Hz, beta=0.6)
+- **Length Prefix Parser** - Extracts 4-byte length then 33/48 byte packet
+- **Packet Parser** - Supports both LidarSight (33 bytes) and OpenTrack (48 bytes)
+- **One Euro Filter** - Signal smoothing (configurable fc_min, beta)
 - **Atomic Triple-Buffer** - Thread-safe pose exchange
+- **Calibration Sync** - Handles RECENTER flag (0x04) to reset offset
 - **Dataref Writer** - Writes to X-Plane head position datarefs
 - **UDP Forwarder** - Broadcasts received data on UDP 4242 for other apps
 
@@ -214,27 +235,68 @@ flowchart TB
 
 | Dataref | Description |
 |---------|-------------|
-| `sim/aircraft/view/acf_peX` | Head X position (right/left) in meters |
-| `sim/aircraft/view/acf_peY` | Head Y position (up/down) in meters |
-| `sim/aircraft/view/acf_peZ` | Head Z position (forward/back) in meters |
-| `sim/graphics/view/pilots_head_phi` | Head roll (tilt) in degrees |
+| `sim/graphics/view/pilots_head_the` | Head pitch (theta) in degrees |
+| `sim/graphics/view/pilots_head_psi` | Head yaw (psi) in degrees |
+| `sim/graphics/view/pilots_head_phi` | Head roll (phi) in degrees |
 
 ---
 
 ## Data Packet Structure
 
+### LidarSight Protocol (33 bytes)
+
 ```c
 #pragma pack(push, 1)
 struct HeadPosePacket {
     uint32_t packet_id;       // Sequence ID for interpolation
-    uint8_t  flags;          // Bit 0: calibrated, Bit 1: tracking valid
-    float    timestamp_us;   // Timestamp in microseconds
-    float    x, y, z;        // Position in meters (relative to calibration)
+    uint8_t  flags;           // Bit 0: calibrated (0x01), Bit 1: tracking valid (0x02), Bit 2: recenter (0x04)
+    float    timestamp_us;    // Timestamp in microseconds
+    float    x, y, z;         // Position in meters (relative to calibration)
     float    pitch, yaw, roll; // Rotation in degrees
 };
 #pragma pack(pop)
-// Size: 33 bytes
+// Size: 33 bytes (+4 byte length prefix on TCP = 37 bytes total)
 ```
+
+### TCP Framing
+
+```
+[4 bytes: length = 33 (big endian)] [33 bytes: packet data]
+```
+
+### Flags
+
+| Flag | Value | Description |
+|------|-------|-------------|
+| CALIBRATED | 0x01 | Calibration has been applied to pose |
+| TRACKING_VALID | 0x02 | ARKit tracking is currently valid |
+| RECENTER | 0x04 | Plugin should reset its offset |
+
+### OpenTrack Protocol (48 bytes)
+
+```c
+#pragma pack(push, 1)
+struct OpenTrackPacket {
+    double x, y, z;           // Position in meters
+    double pitch, yaw, roll;  // Rotation in radians
+};
+#pragma pack(pop)
+// Size: 48 bytes (+4 byte length prefix on TCP = 52 bytes total)
+```
+
+---
+
+## Bugs Found & Fixed
+
+| Bug | Severity | Description | Fix |
+|-----|----------|-------------|-----|
+| Swift struct padding | Critical | Swift struct had 36 bytes due to padding, not 33 | Manual byte-by-byte serialization |
+| Double calibration | High | Calibration applied in both ARTrackingManager and TransportManager | Removed redundant offset in TransportManager |
+| Config not loaded | High | loadConfig() was never called in plugin start() | Added call before filter init |
+| Calibration sync | Medium | Plugin didn't know when iOS recalibrated | Added RECENTER flag (0x04) packet |
+| Network cleanup | Medium | iOS had no stop method for connections | Added stop() method |
+| Thread cleanup | Medium | Plugin flight data thread not stopped on disable | Added stopFlightData() |
+| PacketParser | Medium | Used memcpy which had same padding issue | Explicit field extraction |
 
 ---
 

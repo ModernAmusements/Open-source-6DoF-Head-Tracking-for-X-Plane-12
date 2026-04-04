@@ -381,4 +381,16 @@ class TransportManager: ObservableObject {
     func disconnectFromUSB() {
         isUSBConnected = false
     }
+    
+    func stop() {
+        tcpConnection?.cancel()
+        tcpConnection = nil
+        browser?.cancel()
+        browser = nil
+        connectionStatus = .disconnected
+        hasFirstPose = false
+        lastPitch = 0
+        lastYaw = 0
+        lastRoll = 0
+    }
 }

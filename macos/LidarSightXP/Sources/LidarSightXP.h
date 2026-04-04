@@ -122,6 +122,8 @@ private:
     void registerCommands();
     void startNetwork();
     void stopNetwork();
+    void startFlightData();
+    void stopFlightData();
     
     void checkViewType();
     void applyOneEuroFilter();
@@ -133,7 +135,6 @@ private:
     
     static void menuHandler(void* inMenuRef, void* inItemRef);
     
-    void startFlightData();
     void sendFlightData();
     
     XPLMDataRef mHeadPitch;

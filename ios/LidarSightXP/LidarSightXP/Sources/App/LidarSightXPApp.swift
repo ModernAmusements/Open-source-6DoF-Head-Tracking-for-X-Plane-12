@@ -36,6 +36,8 @@ struct LidarSightXPApp: App {
                 }
             }
             .onDisappear {
+                transportManager.stop()
+                trackingManager.stopTracking()
                 flightDataManager.stopListening()
             }
         }

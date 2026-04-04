@@ -107,7 +107,13 @@ struct OpenTrackPacket {
     }
     
     func toData() -> Data {
-        var packet = self
-        return Data(bytes: &packet, count: OpenTrackPacket.size)
+        var data = Data()
+        withUnsafeBytes(of: x) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: y) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: z) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: pitch) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: yaw) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: roll) { data.append(contentsOf: $0) }
+        return data
     }
 }
