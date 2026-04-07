@@ -71,6 +71,7 @@ LidarSightXP::LidarSightXP()
     , mHasInitialPose(false)
     , mFlightDataSock(-1)
     , mUdpForwardSock(-1)
+    , mUdpListenSock(-1)
 {
     memset(mPoseBuffers, 0, sizeof(mPoseBuffers));
     memset(&mFilteredPose, 0, sizeof(HeadPosePacket));
@@ -102,6 +103,7 @@ void LidarSightXP::start()
     registerDatarefs();
     registerCommands();
     startNetwork();
+    startUdpListener();
     startFlightData();
     
     XPLMRegisterFlightLoopCallback(
@@ -126,6 +128,7 @@ void LidarSightXP::stop()
     
     XPLMUnregisterFlightLoopCallback(flightLoopCallbackStub, this);
     stopNetwork();
+    stopUdpListener();
     stopFlightData();
     
     DEBUG_LOG("Plugin stopped");
@@ -727,4 +730,102 @@ void LidarSightXP::stopFlightData()
         mFlightDataSock = -1;
     }
     DEBUG_LOG("Flight data thread stopped");
+}
+
+void LidarSightXP::startUdpListener()
+{
+    mUdpListenSock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (mUdpListenSock < 0) {
+        DEBUG_LOG("Failed to create UDP listen socket");
+        return;
+    }
+    
+    int reuse = 1;
+    setsockopt(mUdpListenSock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+    
+    sockaddr_in serverAddr;
+    memset(&serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    serverAddr.sin_port = htons(4242);
+    
+    if (bind(mUdpListenSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+        DEBUG_LOG("Failed to bind UDP socket on port 4242");
+        close(mUdpListenSock);
+        mUdpListenSock = -1;
+        return;
+    }
+    
+    DEBUG_LOG("UDP listener started on port 4242");
+    
+    mUdpThread = std::thread([this]() {
+        char buffer[1024];
+        
+        while (mRunning) {
+            fd_set readfds;
+            FD_ZERO(&readfds);
+            FD_SET(mUdpListenSock, &readfds);
+            
+            timeval timeout;
+            timeout.tv_sec = 1;
+            timeout.tv_usec = 0;
+            
+            int ready = select(mUdpListenSock + 1, &readfds, nullptr, nullptr, &timeout);
+            if (ready < 0) break;
+            if (ready == 0) continue;
+            
+            sockaddr_in clientAddr;
+            socklen_t clientLen = sizeof(clientAddr);
+            ssize_t n = recvfrom(mUdpListenSock, buffer, sizeof(buffer), 0, 
+                                (sockaddr*)&clientAddr, &clientLen);
+            
+            if (n <= 0) continue;
+            
+            mIsConnected.store(true);
+            
+            if (n == OPENTRACK_PACKET_SIZE) {
+                OpenTrackPacket opPacket;
+                memcpy(&opPacket, buffer, OPENTRACK_PACKET_SIZE);
+                
+                HeadPosePacket packet;
+                packet.packet_id = 0;
+                packet.flags = 0x02;
+                packet.timestamp_us = 0;
+                packet.x = 0;
+                packet.y = 0;
+                packet.z = 0;
+                packet.pitch = static_cast<float>(opPacket.pitch * 180.0 / M_PI);
+                packet.yaw = static_cast<float>(opPacket.yaw * 180.0 / M_PI);
+                packet.roll = static_cast<float>(opPacket.roll * 180.0 / M_PI);
+                
+                int writeIdx = mWriteBuffer.load();
+                mPoseBuffers[writeIdx] = packet;
+                int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
+                mWriteBuffer.store(nextBuffer);
+                
+            } else if (n == PACKET_SIZE) {
+                HeadPosePacket packet;
+                memcpy(&packet, buffer, PACKET_SIZE);
+                
+                int writeIdx = mWriteBuffer.load();
+                mPoseBuffers[writeIdx] = packet;
+                int nextBuffer = (writeIdx + 1) % BUFFER_COUNT;
+                mWriteBuffer.store(nextBuffer);
+            }
+        }
+        
+        DEBUG_LOG("UDP listener thread exiting");
+    });
+}
+
+void LidarSightXP::stopUdpListener()
+{
+    if (mUdpThread.joinable()) {
+        mUdpThread.join();
+    }
+    if (mUdpListenSock >= 0) {
+        close(mUdpListenSock);
+        mUdpListenSock = -1;
+    }
+    DEBUG_LOG("UDP listener stopped");
 }

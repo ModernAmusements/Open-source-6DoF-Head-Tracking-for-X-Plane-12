@@ -15,6 +15,7 @@ class TransportManager: ObservableObject {
     @Published var needsLocalNetworkPermission: Bool = false
     
     private var tcpConnection: NWConnection?
+    private var udpConnection: NWConnection?
     private let connectionQueue = DispatchQueue(label: "tcpconnection", qos: .userInitiated)
     private var packetId: UInt32 = 0
     private var browser: NWBrowser?
@@ -235,6 +236,43 @@ class TransportManager: ObservableObject {
         print("DEBUG: TCP connection start called")
     }
     
+    func startUDP() {
+        let targetIP = settings.targetIP.isEmpty ? localIP : settings.targetIP
+        guard targetIP != "0.0.0.0" else { return }
+        
+        let host = NWEndpoint.Host(targetIP)
+        let port = NWEndpoint.Port(rawValue: 4242)!
+        
+        let parameters = NWParameters.udp
+        parameters.allowLocalEndpointReuse = true
+        
+        udpConnection = NWConnection(host: host, port: port, using: parameters)
+        
+        udpConnection?.stateUpdateHandler = { [weak self] state in
+            print("DEBUG: UDP state: \(state)")
+            DispatchQueue.main.async {
+                if case .ready = state {
+                    self?.connectionStatus = .connected
+                }
+            }
+        }
+        
+        udpConnection?.start(queue: connectionQueue)
+    }
+    
+    func stopUDP() {
+        udpConnection?.cancel()
+        udpConnection = nil
+    }
+    
+    private func sendOverUDP(_ data: Data) {
+        udpConnection?.send(content: data, completion: .contentProcessed { error in
+            if let error = error {
+                print("DEBUG: UDP send error: \(error)")
+            }
+        })
+    }
+    
     private func reconnectAfterDelay() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard self?.connectionStatus != .connected else { return }
@@ -383,6 +421,8 @@ class TransportManager: ObservableObject {
         
         if isUSBConnected {
             sendOverPeerTalk(data)
+        } else if settings.protocolMode == .openTrack {
+            sendOverUDP(data)
         } else {
             sendOverTCP(data)
         }
@@ -424,6 +464,7 @@ class TransportManager: ObservableObject {
     func stop() {
         tcpConnection?.cancel()
         tcpConnection = nil
+        stopUDP()
         browser?.cancel()
         browser = nil
         connectionStatus = .disconnected

@@ -122,6 +122,8 @@ private:
     void registerCommands();
     void startNetwork();
     void stopNetwork();
+    void startUdpListener();
+    void stopUdpListener();
     void startFlightData();
     void stopFlightData();
     
@@ -153,9 +155,11 @@ private:
     
     std::atomic<bool> mRunning;
     std::thread mNetworkThread;
+    std::thread mUdpThread;
     std::thread mFlightDataThread;
     int mFlightDataSock;
     int mUdpForwardSock;
+    int mUdpListenSock;
     
     static constexpr int BUFFER_COUNT = 3;
     HeadPosePacket mPoseBuffers[BUFFER_COUNT];
