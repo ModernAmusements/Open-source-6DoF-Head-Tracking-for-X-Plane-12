@@ -22,7 +22,8 @@ class HeadTrackerViewModel: ObservableObject {
     
     @Published var settings: DebuggerSettings = .load()
     
-    private let listener = TCPListener()
+    private let udpListener = UDPListener()
+    private let tcpListener = TCPListener()
     private let filter = OneEuroFilterVector3()
     private var hasInitialPose = false
     private var poseOffset = HeadPose()
@@ -43,35 +44,35 @@ class HeadTrackerViewModel: ObservableObject {
     }
     
     private func setupListener() {
-        listener.$isConnected
+        udpListener.$isConnected
             .receive(on: DispatchQueue.main)
             .assign(to: &$isConnected)
         
-        listener.$detectedProtocol
+        udpListener.$detectedProtocol
             .receive(on: DispatchQueue.main)
             .assign(to: &$detectedProtocol)
         
-        listener.$packetRate
+        udpListener.$packetRate
             .receive(on: DispatchQueue.main)
             .assign(to: &$packetRate)
         
-        listener.$errorMessage
+        udpListener.$errorMessage
             .receive(on: DispatchQueue.main)
             .assign(to: &$errorMessage)
         
-        listener.onPacketReceived = { [weak self] packet in
+        udpListener.onPacketReceived = { [weak self] packet in
             self?.processPacket(packet)
         }
         
-        listener.start(port: UInt16(settings.listenPort))
+        udpListener.start(port: 4242)
     }
     
     func startListening() {
-        listener.start(port: UInt16(settings.listenPort))
+        udpListener.start(port: 4242)
     }
     
     func stopListening() {
-        listener.stop()
+        udpListener.stop()
     }
     
     func recenter() {
