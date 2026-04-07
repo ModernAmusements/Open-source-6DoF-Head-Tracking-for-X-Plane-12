@@ -120,9 +120,9 @@ class HeadTrackerViewModel: ObservableObject {
             self.filteredYaw = Float(filtered.yaw)
             self.filteredRoll = Float(filtered.roll)
             
-            var offsetPitch = self.filteredPitch - self.poseOffset.pitch
-            var offsetYaw = self.filteredYaw - self.poseOffset.yaw
-            var offsetRoll = self.filteredRoll - self.poseOffset.roll
+            let offsetPitch = self.filteredPitch - self.poseOffset.pitch
+            let offsetYaw = self.filteredYaw - self.poseOffset.yaw
+            let offsetRoll = self.filteredRoll - self.poseOffset.roll
             
             print("DEBUG processPacket: filtered=(\(self.filteredPitch), \(self.filteredYaw), \(self.filteredRoll)) offset=(\(offsetPitch), \(offsetYaw), \(offsetRoll)) hasInitialPose=\(self.hasInitialPose)")
             
