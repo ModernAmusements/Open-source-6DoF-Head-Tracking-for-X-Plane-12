@@ -60,10 +60,11 @@ struct OpenTrackPacket {
 
 class PacketParser {
     static func parse(_ data: Data) -> ParsedPacket? {
-        if data.count >= LidarSightPacket.size {
-            return parseLidarSight(data)
-        } else if data.count >= OpenTrackPacket.size {
+        // Check OpenTrack (48 bytes) FIRST before LidarSight (33 bytes)
+        if data.count >= OpenTrackPacket.size {
             return parseOpenTrack(data)
+        } else if data.count >= LidarSightPacket.size {
+            return parseLidarSight(data)
         }
         return nil
     }
@@ -84,24 +85,15 @@ class PacketParser {
     private static func parseOpenTrack(_ data: Data) -> ParsedPacket? {
         guard data.count >= OpenTrackPacket.size else { return nil }
         
-        print("DEBUG parseOpenTrack: data hex = \(data.prefix(48).map { String(format: "%02x", $0) }.joined(separator: " "))")
-        
         var packet = OpenTrackPacket()
         
-        func readDoubleBigEndian(_ bytes: Data) -> Double {
-            let bits = bytes.withUnsafeBytes { $0.load(as: UInt64.self) }
-            let swapped = bits.bigEndian
-            return Double(bitPattern: swapped)
-        }
-        
-        packet.x = readDoubleBigEndian(data.subdata(in: 0..<8))
-        packet.y = readDoubleBigEndian(data.subdata(in: 8..<16))
-        packet.z = readDoubleBigEndian(data.subdata(in: 16..<24))
-        packet.pitch = readDoubleBigEndian(data.subdata(in: 24..<32))
-        packet.yaw = readDoubleBigEndian(data.subdata(in: 32..<40))
-        packet.roll = readDoubleBigEndian(data.subdata(in: 40..<48))
-        
-        print("DEBUG parseOpenTrack: parsed pitch=\(packet.pitch) yaw=\(packet.yaw) roll=\(packet.roll)")
+        // iOS sends little-endian doubles, parse as little-endian
+        packet.x = data.subdata(in: 0..<8).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.y = data.subdata(in: 8..<16).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.z = data.subdata(in: 16..<24).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.pitch = data.subdata(in: 24..<32).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.yaw = data.subdata(in: 32..<40).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.roll = data.subdata(in: 40..<48).withUnsafeBytes { $0.load(as: Double.self) }
         
         let pose = HeadPose(
             pitch: Float(packet.pitch * 180.0 / .pi),
