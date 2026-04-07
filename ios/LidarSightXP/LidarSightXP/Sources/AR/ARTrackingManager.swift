@@ -228,7 +228,6 @@ class ARTrackingManager: NSObject, ObservableObject {
         
         print("DEBUG ARKit: raw position=(\(position.x), \(position.y), \(position.z)) rotation=(\(rotation.x), \(rotation.y), \(rotation.z))")
         
-        let timeSinceLastUpdate = Date().timeIntervalSince(lastAnchorUpdateTime)
         lastAnchorUpdateTime = Date()
         
         if abs(rotation.x - lastProcessedRotation.x) < 0.01 &&

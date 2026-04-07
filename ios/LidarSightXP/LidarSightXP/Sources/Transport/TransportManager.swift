@@ -453,8 +453,10 @@ class TransportManager: ObservableObject {
     private func sendOverTCP(_ data: Data) {
         guard let connection = tcpConnection, connection.state == .ready else {
             print("DEBUG TCP not ready, triggering reconnect")
-            connectionStatus = .disconnected
-            reconnectAfterDelay()
+            DispatchQueue.main.async { [weak self] in
+                self?.connectionStatus = .disconnected
+                self?.reconnectAfterDelay()
+            }
             return
         }
         
@@ -465,8 +467,10 @@ class TransportManager: ObservableObject {
         connection.send(content: packetData, completion: .contentProcessed { [weak self] error in
             if let error = error {
                 print("DEBUG: TCP send error: \(error)")
-                self?.connectionStatus = .disconnected
-                self?.reconnectAfterDelay()
+                DispatchQueue.main.async {
+                    self?.connectionStatus = .disconnected
+                    self?.reconnectAfterDelay()
+                }
             }
         })
     }
