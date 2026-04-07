@@ -38,7 +38,7 @@ targets:
         CFBundleVersion: "1"
         CFBundleShortVersionString: "1.0"
         CFBundlePackageType: APPL
-        CFBundleExecutable: LiDARSight
+        CFBundleExecutable: HeadTrackerDebugger
         LSMinimumSystemVersion: "14.0"
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
