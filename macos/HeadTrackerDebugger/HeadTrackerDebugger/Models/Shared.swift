@@ -21,7 +21,7 @@ struct TrackingSettings: Codable {
     var filterDCutoff: Double = 1.0
     
     var yaw: AxisConfig = AxisConfig(
-        deadzone: 2.0,
+        deadzone: 0.5,
         maxInput: 30.0,
         maxOutput: 90.0,
         curvePower: 2.0,
@@ -30,7 +30,7 @@ struct TrackingSettings: Codable {
     )
     
     var pitch: AxisConfig = AxisConfig(
-        deadzone: 3.0,
+        deadzone: 0.5,
         maxInput: 20.0,
         maxOutput: 25.0,
         curvePower: 1.5,
@@ -39,11 +39,11 @@ struct TrackingSettings: Codable {
     )
     
     var roll: AxisConfig = AxisConfig(
-        deadzone: 0.0,
+        deadzone: 0.5,
         maxInput: 15.0,
         maxOutput: 15.0,
         curvePower: 1.0,
-        enabled: false,
+        enabled: true,
         invert: false
     )
 }
