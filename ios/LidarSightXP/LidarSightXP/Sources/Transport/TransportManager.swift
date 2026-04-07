@@ -285,9 +285,12 @@ class TransportManager: ObservableObject {
     }
     
     private func sendOverUDP(_ data: Data) {
+        print("DEBUG sendOverUDP: sending \(data.count) bytes")
         udpConnection?.send(content: data, completion: .contentProcessed { error in
             if let error = error {
                 print("DEBUG: UDP send error: \(error)")
+            } else {
+                print("DEBUG: UDP send success!")
             }
         })
     }
