@@ -87,12 +87,19 @@ class PacketParser {
         print("DEBUG parseOpenTrack: data hex = \(data.prefix(48).map { String(format: "%02x", $0) }.joined(separator: " "))")
         
         var packet = OpenTrackPacket()
-        packet.x = data.subdata(in: 0..<8).withUnsafeBytes { $0.load(as: Double.self) }
-        packet.y = data.subdata(in: 8..<16).withUnsafeBytes { $0.load(as: Double.self) }
-        packet.z = data.subdata(in: 16..<24).withUnsafeBytes { $0.load(as: Double.self) }
-        packet.pitch = data.subdata(in: 24..<32).withUnsafeBytes { $0.load(as: Double.self) }
-        packet.yaw = data.subdata(in: 32..<40).withUnsafeBytes { $0.load(as: Double.self) }
-        packet.roll = data.subdata(in: 40..<48).withUnsafeBytes { $0.load(as: Double.self) }
+        
+        func readDoubleBigEndian(_ bytes: Data) -> Double {
+            let bits = bytes.withUnsafeBytes { $0.load(as: UInt64.self) }
+            let swapped = bits.bigEndian
+            return Double(bitPattern: swapped)
+        }
+        
+        packet.x = readDoubleBigEndian(data.subdata(in: 0..<8))
+        packet.y = readDoubleBigEndian(data.subdata(in: 8..<16))
+        packet.z = readDoubleBigEndian(data.subdata(in: 16..<24))
+        packet.pitch = readDoubleBigEndian(data.subdata(in: 24..<32))
+        packet.yaw = readDoubleBigEndian(data.subdata(in: 32..<40))
+        packet.roll = readDoubleBigEndian(data.subdata(in: 40..<48))
         
         print("DEBUG parseOpenTrack: parsed pitch=\(packet.pitch) yaw=\(packet.yaw) roll=\(packet.roll)")
         
