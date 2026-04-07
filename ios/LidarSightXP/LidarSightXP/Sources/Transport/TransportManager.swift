@@ -155,14 +155,33 @@ class TransportManager: ObservableObject {
     
     func startTCPServerIfReady() {
         guard !needsLocalNetworkPermission else { return }
-        startTCPServer()
+        startTracking()
+    }
+    
+    func startTracking() {
+        print("DEBUG: startTracking called, protocolMode = \(settings.protocolMode)")
+        connectionStatus = .connecting
+        updateLocalIP()
+        
+        if settings.protocolMode == .openTrack {
+            startUDP()
+        } else {
+            connectToMac()
+        }
+    }
+    
+    func stopTracking() {
+        if settings.protocolMode == .openTrack {
+            stopUDP()
+        } else {
+            stopTCPServer()
+        }
+        connectionStatus = .disconnected
     }
     
     func startTCPServer() {
         print("DEBUG: startTCPServer called")
-        connectionStatus = .connecting
-        updateLocalIP()
-        connectToMac()
+        startTracking()
     }
     
     func stopTCPServer() {

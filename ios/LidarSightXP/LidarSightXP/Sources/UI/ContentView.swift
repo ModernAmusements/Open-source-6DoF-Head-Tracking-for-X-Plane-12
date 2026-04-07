@@ -158,7 +158,7 @@ struct ConnectionStatusView: View {
         .background(.ultraThinMaterial, in: Capsule())
         .onTapGesture {
             transportManager.requestLocalNetworkPermission {
-                transportManager.startTCPServer()
+                transportManager.startTracking()
             }
         }
     }
@@ -179,7 +179,11 @@ struct ConnectionStatusView: View {
         switch transportManager.connectionStatus {
         case .connected: 
             let targetIP = transportManager.settings.targetIP.isEmpty ? transportManager.localIP : transportManager.settings.targetIP
-            return "TCP: \(targetIP):\(transportManager.tcpPort)"
+            if transportManager.settings.protocolMode == .openTrack {
+                return "UDP: \(targetIP):4242"
+            } else {
+                return "TCP: \(targetIP):\(transportManager.tcpPort)"
+            }
         case .connecting: return "Connecting..."
         case .disconnected: return "Disconnected"
         case .error(let msg): return "Error: \(msg)"
@@ -244,7 +248,7 @@ struct StartButtonView: View {
     var body: some View {
         Button(action: {
             transportManager.requestLocalNetworkPermission { [self] in
-                transportManager.startTCPServer()
+                transportManager.startTracking()
                 trackingManager.trackingMode = transportManager.settings.trackingMode
                 trackingManager.startTracking()
             }
