@@ -164,8 +164,10 @@ class TransportManager: ObservableObject {
         updateLocalIP()
         
         if settings.protocolMode == .openTrack {
+            print("DEBUG: Starting UDP for OpenTrack mode")
             startUDP()
         } else {
+            print("DEBUG: Starting TCP for Custom mode")
             connectToMac()
         }
     }
@@ -378,6 +380,8 @@ class TransportManager: ObservableObject {
         if settings.protocolMode == .openTrack {
             let opPacket = OpenTrackPacket(from: pose, settings: settings, calibration: calibrationOffset)
             data = opPacket.toData()
+            print("DEBUG sendPose: OpenTrack mode - sending \(data.count) bytes")
+            print("DEBUG sendPose: first 16 bytes hex: \(data.prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
         } else {
             var packet = HeadPosePacket()
             packet.packetId = packetId
