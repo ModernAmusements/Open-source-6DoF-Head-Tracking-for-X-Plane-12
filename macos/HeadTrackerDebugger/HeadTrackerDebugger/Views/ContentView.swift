@@ -130,10 +130,7 @@ class HeadTrackerViewModel: ObservableObject {
                 self.poseOffset.pitch = self.filteredPitch
                 self.poseOffset.yaw = self.filteredYaw
                 self.poseOffset.roll = self.filteredRoll
-                offsetPitch = 0
-                offsetYaw = 0
-                offsetRoll = 0
-                print("DEBUG processPacket: First packet - set initial pose, output = zero (relative to initial)")
+                print("DEBUG processPacket: First packet - set initial pose")
             }
             
             print("DEBUG processPacket: applying curve to offset=(\(offsetPitch), \(offsetYaw), \(offsetRoll))")
