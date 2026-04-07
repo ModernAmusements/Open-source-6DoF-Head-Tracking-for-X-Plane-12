@@ -157,26 +157,8 @@ struct ConnectionStatusView: View {
         .padding(.vertical, 6)
         .background(.ultraThinMaterial, in: Capsule())
         .onTapGesture {
-            if transportManager.connectionStatus == .connected {
-                transportManager.stopTracking()
-                trackingManager.stopTracking()
-            } else {
-                transportManager.requestLocalNetworkPermission {
-                    transportManager.startTracking()
-                }
-            }
-        }
-    }
-    
-    private func toggleTracking() {
-        if transportManager.connectionStatus == .connected {
-            transportManager.stopTracking()
-            trackingManager.stopTracking()
-        } else {
             transportManager.requestLocalNetworkPermission {
-                transportManager.startTracking()
-                trackingManager.trackingMode = transportManager.settings.trackingMode
-                trackingManager.startTracking()
+                transportManager.startTCPServer()
             }
         }
     }
@@ -265,21 +247,16 @@ struct StartButtonView: View {
     
     var body: some View {
         Button(action: {
-            if transportManager.connectionStatus == .connected {
-                transportManager.stopTracking()
-                trackingManager.stopTracking()
-            } else {
-                transportManager.requestLocalNetworkPermission { [self] in
-                    transportManager.startTracking()
-                    trackingManager.trackingMode = transportManager.settings.trackingMode
-                    trackingManager.startTracking()
-                }
+            transportManager.requestLocalNetworkPermission { [self] in
+                transportManager.startTCPServer()
+                trackingManager.trackingMode = transportManager.settings.trackingMode
+                trackingManager.startTracking()
             }
         }) {
             VStack(spacing: 8) {
-                Image(systemName: transportManager.connectionStatus == .connected ? "stop.circle.fill" : modeIcon)
+                Image(systemName: modeIcon)
                     .font(.system(size: 40))
-                Text(transportManager.connectionStatus == .connected ? "Stop Tracking" : "Start Tracking")
+                Text("Start Tracking")
                     .font(.headline)
                 Text(modeLabel)
                     .font(.caption)
@@ -287,7 +264,6 @@ struct StartButtonView: View {
             }
             .foregroundColor(.white)
             .padding(32)
-            .background(transportManager.connectionStatus == .connected ? Color.red.opacity(0.8) : Color.clear, in: RoundedRectangle(cornerRadius: 20))
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
         }
     }
@@ -465,9 +441,7 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .onChange(of: selectedProtocol) { oldValue, newValue in
-                        saveSettings()
-                    }
+                    .onChange(of: selectedProtocol) { _ in saveSettings() }
                     
                     Text(selectedProtocol.description)
                         .font(.caption)
@@ -539,7 +513,6 @@ struct SettingsView: View {
     }
     
     private func saveSettings() {
-        let oldProtocol = transportManager.settings.protocolMode
         let settings = TrackingSettings(
             sensitivity: Float(sensitivity),
             smoothing: Float(smoothing),
@@ -553,10 +526,5 @@ struct SettingsView: View {
         )
         transportManager.updateSettings(settings)
         trackingManager.trackingMode = selectedMode
-        
-        if oldProtocol != selectedProtocol {
-            transportManager.stopTracking()
-            transportManager.startTracking()
-        }
     }
 }
