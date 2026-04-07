@@ -108,12 +108,24 @@ struct OpenTrackPacket {
     
     func toData() -> Data {
         var data = Data()
-        withUnsafeBytes(of: x) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: y) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: z) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: pitch) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: yaw) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: roll) { data.append(contentsOf: $0) }
+        
+        var xLe = x.bitPattern.littleEndian
+        var yLe = y.bitPattern.littleEndian
+        var zLe = z.bitPattern.littleEndian
+        var pitchLe = pitch.bitPattern.littleEndian
+        var yawLe = yaw.bitPattern.littleEndian
+        var rollLe = roll.bitPattern.littleEndian
+        
+        withUnsafeBytes(of: &xLe) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &yLe) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &zLe) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &pitchLe) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &yawLe) { data.append(contentsOf: $0) }
+        withUnsafeBytes(of: &rollLe) { data.append(contentsOf: $0) }
+        
+        print("DEBUG toData: x=\(x) y=\(y) z=\(z) pitch=\(pitch) yaw=\(yaw) roll=\(roll)")
+        print("DEBUG toData: data hex = \(data.prefix(48).map { String(format: "%02x", $0) }.joined(separator: " "))")
+        
         return data
     }
 }

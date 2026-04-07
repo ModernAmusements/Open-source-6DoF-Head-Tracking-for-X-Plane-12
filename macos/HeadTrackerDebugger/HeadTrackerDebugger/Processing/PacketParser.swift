@@ -82,7 +82,19 @@ class PacketParser {
     }
     
     private static func parseOpenTrack(_ data: Data) -> ParsedPacket? {
-        guard let packet = OpenTrackPacket.parse(from: data) else { return nil }
+        guard data.count >= OpenTrackPacket.size else { return nil }
+        
+        print("DEBUG parseOpenTrack: data hex = \(data.prefix(48).map { String(format: "%02x", $0) }.joined(separator: " "))")
+        
+        var packet = OpenTrackPacket()
+        packet.x = data.subdata(in: 0..<8).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.y = data.subdata(in: 8..<16).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.z = data.subdata(in: 16..<24).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.pitch = data.subdata(in: 24..<32).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.yaw = data.subdata(in: 32..<40).withUnsafeBytes { $0.load(as: Double.self) }
+        packet.roll = data.subdata(in: 40..<48).withUnsafeBytes { $0.load(as: Double.self) }
+        
+        print("DEBUG parseOpenTrack: parsed pitch=\(packet.pitch) yaw=\(packet.yaw) roll=\(packet.roll)")
         
         let pose = HeadPose(
             pitch: Float(packet.pitch * 180.0 / .pi),
