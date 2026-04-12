@@ -38,72 +38,67 @@ struct StatusPanel: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("CONNECTION STATUS")
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Status")
                 .font(.headline)
-                .foregroundColor(.secondary)
             
             HStack(spacing: 8) {
                 Circle()
-                    .fill(isConnected ? Color.green : Color.red)
-                    .frame(width: 12, height: 12)
+                    .fill(isConnected ? .green : .secondary)
+                    .frame(width: 10, height: 10)
                 
                 Text(isConnected ? "Connected" : "Disconnected")
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundColor(isConnected ? .green : .red)
+                    .font(.subheadline)
             }
             
-            HStack(spacing: 4) {
-                Text("Local IP:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            HStack(spacing: 8) {
+                Text("Listen:")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 Text("\(localIP):\(port)")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.primary)
+                    .font(.system(.subheadline, design: .monospaced))
             }
             
             if let error = errorMessage {
                 Text(error)
-                    .font(.caption)
-                    .foregroundColor(.red)
+                    .font(.subheadline)
+                    .foregroundStyle(.red)
             }
             
             Divider()
             
             HStack {
-                VStack(alignment: .leading) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Protocol")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Text(protocol_.displayName)
-                        .font(.system(.body, design: .monospaced))
+                        .font(.subheadline)
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .trailing) {
+                VStack(alignment: .trailing, spacing: 4) {
                     Text("Packet Rate")
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(packetRate, specifier: "%.1f") pkt/s")
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundColor(packetRate > 0 ? .primary : .secondary)
+                        .foregroundStyle(.secondary)
+                    Text("\(packetRate, specifier: "%.1f")/s")
+                        .font(.subheadline)
                 }
             }
         }
-        .padding()
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
+        .padding(16)
+        .background(.regularMaterial)
     }
 }
 
 struct StatusPanel_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 16) {
-            StatusPanel(isConnected: true, protocol_: .openTrack, packetRate: 58.2, errorMessage: nil, port: 4242)
+            StatusPanel(isConnected: true, protocol_: .lidarSight, packetRate: 58.2, errorMessage: nil, port: 4242)
             StatusPanel(isConnected: false, protocol_: .lidarSight, packetRate: 0, errorMessage: "Failed to bind socket", port: 4242)
         }
-        .frame(width: 280)
+        .frame(width: 288)
         .padding()
     }
 }

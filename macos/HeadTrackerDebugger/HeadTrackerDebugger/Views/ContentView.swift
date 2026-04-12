@@ -123,39 +123,24 @@ class HeadTrackerViewModel: ObservableObject {
             let offsetYaw = self.filteredYaw - self.poseOffset.yaw
             let offsetRoll = self.filteredRoll - self.poseOffset.roll
             
-            print("DEBUG processPacket: filtered=(\(self.filteredPitch), \(self.filteredYaw), \(self.filteredRoll)) offset=(\(offsetPitch), \(offsetYaw), \(offsetRoll)) hasInitialPose=\(self.hasInitialPose)")
-            
             if !self.hasInitialPose {
                 self.hasInitialPose = true
                 self.poseOffset.pitch = self.filteredPitch
                 self.poseOffset.yaw = self.filteredYaw
                 self.poseOffset.roll = self.filteredRoll
-                print("DEBUG processPacket: First packet - set initial pose")
             }
-            
-            print("DEBUG processPacket: applying curve to offset=(\(offsetPitch), \(offsetYaw), \(offsetRoll))")
             
             self.outputPitch = self.applyCurve(offsetPitch, config: self.settings.tracking.pitch)
             self.outputYaw = self.applyCurve(offsetYaw, config: self.settings.tracking.yaw)
             self.outputRoll = self.applyCurve(offsetRoll, config: self.settings.tracking.roll)
-            
-            print("DEBUG processPacket: OUTPUT=(\(self.outputPitch), \(self.outputYaw), \(self.outputRoll))")
         }
     }
     
     private func applyCurve(_ value: Float, config: AxisConfig) -> Float {
-        guard config.enabled else { 
-            print("DEBUG applyCurve: axis disabled, returning 0")
-            return 0 
-        }
-        
-        print("DEBUG applyCurve: value=\(value) deadzone=\(config.deadzone) maxInput=\(config.maxInput) maxOutput=\(config.maxOutput) enabled=\(config.enabled)")
+        guard config.enabled else { return 0 }
         
         let absVal = abs(value)
-        guard absVal >= config.deadzone else { 
-            print("DEBUG applyCurve: \(absVal) < deadzone \(config.deadzone), returning 0")
-            return 0 
-        }
+        guard absVal >= config.deadzone else { return 0 }
         
         let sign: Float = value > 0 ? 1 : -1
         let effectiveMaxInput = max(config.maxInput, config.deadzone + 0.1)
@@ -166,20 +151,64 @@ class HeadTrackerViewModel: ObservableObject {
         let tPowered = pow(t, curvePower)
         
         let curved = config.deadzone + (config.maxOutput - config.deadzone) * tPowered
-        let result = sign * curved * (config.invert ? -1 : 1)
-        
-        print("DEBUG applyCurve: t=\(t) powered=\(tPowered) curved=\(curved) result=\(result)")
-        
-        return result
+        return sign * curved * (config.invert ? -1 : 1)
     }
 }
 
 struct ContentView: View {
     @StateObject private var viewModel = HeadTrackerViewModel()
     @State private var showSettings = false
+    @State private var columnVisibility = NavigationSplitViewVisibility.all
     
     var body: some View {
-        HSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            List {
+                Section("Connection") {
+                    HStack {
+                        Circle()
+                            .fill(viewModel.isConnected ? .green : .secondary)
+                            .frame(width: 10, height: 10)
+                        Text(viewModel.isConnected ? "Connected" : "Disconnected")
+                        Spacer()
+                        Text("\(viewModel.packetRate, specifier: "%.1f") Hz")
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Protocol")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(viewModel.detectedProtocol.displayName)
+                    }
+                    
+                    HStack {
+                        Text("Port")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(viewModel.settings.listenPort)")
+                    }
+                }
+                
+                Section("Raw Values") {
+                    ValueRow(label: "Pitch", value: viewModel.rawPitch)
+                    ValueRow(label: "Yaw", value: viewModel.rawYaw)
+                    ValueRow(label: "Roll", value: viewModel.rawRoll)
+                }
+                
+                Section("Filtered") {
+                    ValueRow(label: "Pitch", value: viewModel.filteredPitch)
+                    ValueRow(label: "Yaw", value: viewModel.filteredYaw)
+                    ValueRow(label: "Roll", value: viewModel.filteredRoll)
+                }
+                
+                Section("Output") {
+                    ValueRow(label: "Pitch", value: viewModel.outputPitch)
+                    ValueRow(label: "Yaw", value: viewModel.outputYaw)
+                    ValueRow(label: "Roll", value: viewModel.outputRoll)
+                }
+            }
+            .listStyle(.sidebar)
+        } detail: {
             VStack(spacing: 16) {
                 WindshieldView3D(
                     pitch: viewModel.outputPitch,
@@ -188,15 +217,15 @@ struct ContentView: View {
                 )
                 .frame(minHeight: 300)
                 
-                HStack {
-                    Spacer()
-                    
-                    Button("Recenter") {
+                HStack(spacing: 12) {
+                    Button {
                         viewModel.recenter()
+                    } label: {
+                        Image(systemName: "location.viewfinder")
                     }
                     .buttonStyle(.bordered)
-                    
-                    Spacer()
+                    .disabled(viewModel.isConnected == false)
+                    .help("Recenter tracking (⌘R)")
                     
                     Button(viewModel.isConnected ? "Stop" : "Start") {
                         if viewModel.isConnected {
@@ -206,55 +235,41 @@ struct ContentView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(viewModel.isConnected ? .red : .green)
+                    .keyboardShortcut(viewModel.isConnected ? "x" : "s", modifiers: [.command, .shift])
                     
-                    Spacer()
-                    
-                    Button("Settings") {
-                        showSettings.toggle()
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
                     }
                     .buttonStyle(.bordered)
+                    .help("Settings (⌘,)")
                 }
+                .padding(.bottom, 8)
             }
             .frame(minWidth: 500)
-            .padding()
-            
-            VStack(alignment: .leading, spacing: 16) {
-                StatusPanel(
-                    isConnected: viewModel.isConnected,
-                    protocol_: viewModel.detectedProtocol,
-                    packetRate: viewModel.packetRate,
-                    errorMessage: viewModel.errorMessage,
-                    port: viewModel.settings.listenPort
-                )
-                
-                ValuesPanel(
-                    title: "RAW VALUES",
-                    pitch: viewModel.rawPitch,
-                    yaw: viewModel.rawYaw,
-                    roll: viewModel.rawRoll,
-                    color: .blue
-                )
-                
-                ValuesPanel(
-                    title: "FILTERED (One Euro)",
-                    pitch: viewModel.filteredPitch,
-                    yaw: viewModel.filteredYaw,
-                    roll: viewModel.filteredRoll,
-                    color: .orange
-                )
-                
-                ValuesPanel(
-                    title: "OUTPUT (to X-Plane)",
-                    pitch: viewModel.outputPitch,
-                    yaw: viewModel.outputYaw,
-                    roll: viewModel.outputRoll,
-                    color: .green
-                )
-                
-                Spacer()
+        }
+        .navigationTitle("Head Tracker")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.recenter()
+                } label: {
+                    Image(systemName: "location.viewfinder")
+                }
+                .disabled(viewModel.isConnected == false)
+                .help("Recenter tracking")
             }
-            .frame(width: 300)
-            .padding()
+            
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .help("Settings")
+            }
         }
         .frame(minWidth: 900, minHeight: 600)
         .sheet(isPresented: $showSettings) {
@@ -266,18 +281,23 @@ struct ContentView: View {
                 },
                 isPresented: $showSettings
             )
-            .frame(width: 400, height: 650)
-            .padding()
+            .frame(width: 400, height: 600)
             .interactiveDismissDisabled(false)
         }
-        .onChange(of: viewModel.settings.tracking.filterMinCutoff) { _, _ in
-            viewModel.updateFilter()
-        }
-        .onChange(of: viewModel.settings.tracking.filterBeta) { _, _ in
-            viewModel.updateFilter()
-        }
-        .onChange(of: viewModel.settings.tracking.filterDCutoff) { _, _ in
-            viewModel.updateFilter()
+    }
+}
+
+struct ValueRow: View {
+    let label: String
+    let value: Float
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text("\(value, specifier: "%+.1f")°")
+                .font(.system(.body, design: .monospaced))
         }
     }
 }

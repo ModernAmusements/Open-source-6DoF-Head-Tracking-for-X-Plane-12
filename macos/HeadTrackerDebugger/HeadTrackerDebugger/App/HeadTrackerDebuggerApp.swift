@@ -1,5 +1,12 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let startListening = Notification.Name("startListening")
+    static let stopListening = Notification.Name("stopListening")
+    static let recenter = Notification.Name("recenter")
+    static let showSettings = Notification.Name("showSettings")
+}
+
 @main
 struct LidarSightApp: App {
     @State private var showLaunchScreen = true
@@ -27,6 +34,32 @@ struct LidarSightApp: App {
         .defaultSize(width: 1000, height: 700)
         .commands {
             CommandGroup(replacing: .newItem) { }
+            
+            CommandMenu("Tracker") {
+                Button("Start Listening") {
+                    NotificationCenter.default.post(name: .startListening, object: nil)
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+                
+                Button("Stop Listening") {
+                    NotificationCenter.default.post(name: .stopListening, object: nil)
+                }
+                .keyboardShortcut("x", modifiers: [.command, .shift])
+                
+                Divider()
+                
+                Button("Recenter") {
+                    NotificationCenter.default.post(name: .recenter, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: [.command])
+                
+                Divider()
+                
+                Button("Settings...") {
+                    NotificationCenter.default.post(name: .showSettings, object: nil)
+                }
+                .keyboardShortcut(",", modifiers: [.command])
+            }
         }
     }
 }
