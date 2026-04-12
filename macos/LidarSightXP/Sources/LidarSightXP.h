@@ -79,27 +79,27 @@ struct TrackingConfig {
     float filterDCutoff;
     
     TrackingConfig() 
-        : filterMinCutoff(1.0f), filterBeta(0.8f), filterDCutoff(1.0f) 
+        : filterMinCutoff(0.5f), filterBeta(0.7f), filterDCutoff(1.0f) 
     {
-        yaw.deadzone = 0.5f;
-        yaw.maxInput = 90.0f;
-        yaw.maxOutput = 90.0f;
+        yaw.deadzone = 0.2f;
+        yaw.maxInput = 45.0f;
+        yaw.maxOutput = 120.0f;
         yaw.curvePower = 1.0f;
         yaw.enabled = true;
         yaw.invert = false;
         
-        pitch.deadzone = 0.5f;
-        pitch.maxInput = 90.0f;
-        pitch.maxOutput = 90.0f;
+        pitch.deadzone = 0.2f;
+        pitch.maxInput = 45.0f;
+        pitch.maxOutput = 120.0f;
         pitch.curvePower = 1.0f;
         pitch.enabled = true;
         pitch.invert = false;
         
-        roll.deadzone = 0.5f;
-        roll.maxInput = 90.0f;
-        roll.maxOutput = 90.0f;
+        roll.deadzone = 0.2f;
+        roll.maxInput = 45.0f;
+        roll.maxOutput = 60.0f;
         roll.curvePower = 1.0f;
-        roll.enabled = false;
+        roll.enabled = true;
         roll.invert = false;
     }
 };

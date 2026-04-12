@@ -73,7 +73,9 @@ LidarSightXP::LidarSightXP()
     , mUdpForwardSock(-1)
     , mUdpListenSock(-1)
 {
-    memset(mPoseBuffers, 0, sizeof(mPoseBuffers));
+    for (auto& buf : mPoseBuffers) {
+        memset(&buf, 0, sizeof(HeadPosePacket));
+    }
     memset(&mFilteredPose, 0, sizeof(HeadPosePacket));
     memset(&mPoseOffset, 0, sizeof(HeadPosePacket));
 }
@@ -102,9 +104,6 @@ void LidarSightXP::start()
     
     registerDatarefs();
     registerCommands();
-    startNetwork();
-    startUdpListener();
-    startFlightData();
     
     XPLMRegisterFlightLoopCallback(
         flightLoopCallbackStub,
@@ -112,14 +111,7 @@ void LidarSightXP::start()
         this
     );
     
-    char buf[256];
-    snprintf(buf, sizeof(buf), "Plugin started. Config: yaw_deadzone=%.1f yaw_curve=%.1f pitch_deadzone=%.1f filter=%.1f",
-             mConfig.yaw.deadzone, mConfig.yaw.curvePower, mConfig.pitch.deadzone, mConfig.filterMinCutoff);
-    DEBUG_LOG(buf);
-    
-    snprintf(buf, sizeof(buf), "Datarefs: pitch=%p yaw=%p roll=%p view=%p",
-             (void*)mHeadPitch, (void*)mHeadYaw, (void*)mHeadRoll, (void*)mViewType);
-    DEBUG_LOG(buf);
+    DEBUG_LOG("Flight loop registered, deferring network...");
 }
 
 void LidarSightXP::stop()
@@ -129,7 +121,6 @@ void LidarSightXP::stop()
     XPLMUnregisterFlightLoopCallback(flightLoopCallbackStub, this);
     stopNetwork();
     stopUdpListener();
-    stopFlightData();
     
     DEBUG_LOG("Plugin stopped");
 }
@@ -156,6 +147,14 @@ void LidarSightXP::flightLoopCallback()
 {
     if (!mRunning) {
         return;
+    }
+    
+    static bool networkStarted = false;
+    if (!networkStarted) {
+        networkStarted = true;
+        startNetwork();
+        startUdpListener();
+        DEBUG_LOG("Network started on first flight loop");
     }
     
     checkViewType();
@@ -262,12 +261,17 @@ void LidarSightXP::recenter()
 
 float LidarSightXP::applyCurve(float value, const AxisConfig& config)
 {
-    if (!config.enabled || std::abs(value) < config.deadzone) {
+    if (!config.enabled) {
+        return 0.0f;
+    }
+    
+    float absVal = std::abs(value);
+    
+    if (absVal < config.deadzone) {
         return 0.0f;
     }
     
     float sign = (value > 0) ? 1.0f : -1.0f;
-    float absVal = std::abs(value);
     
     float effectiveMaxInput = std::max(config.maxInput, config.deadzone + 0.1f);
     float t = (absVal - config.deadzone) / (effectiveMaxInput - config.deadzone);
@@ -277,12 +281,9 @@ float LidarSightXP::applyCurve(float value, const AxisConfig& config)
     float curvePower = config.curvePower;
     if (curvePower < 0.1f) curvePower = 0.1f;
     
-    float tPowered = t;
-    for (int i = 1; i < (int)(curvePower * 10); i++) {
-        tPowered *= t;
-    }
+    float tPowered = (float)pow(t, 1.0 / curvePower);
     
-    float curved = config.deadzone + (config.maxOutput - config.deadzone) * tPowered;
+    float curved = config.maxOutput * tPowered;
     
     return sign * curved * (config.invert ? -1.0f : 1.0f);
 }
@@ -690,34 +691,8 @@ void LidarSightXP::startFlightData()
 
 void LidarSightXP::sendFlightData()
 {
-    if (mFlightDataSock < 0) return;
-    
-    FlightDataPacket packet;
-    memset(&packet, 0, sizeof(packet));
-    memcpy(packet.header, "DATA", 4);
-    
-    auto readValid = [](XPLMDataRef ref, double fallback) -> double {
-        if (!ref) return fallback;
-        float val = XPLMGetDataf(ref);
-        if (!std::isfinite(val)) return fallback;
-        return val;
-    };
-    
-    packet.airspeed = readValid(mAirspeed, 0.0);
-    packet.altitude = readValid(mAltitude, 0.0) * 3.28084;
-    packet.heading = readValid(mHeading, 0.0);
-    packet.pitch = readValid(mPitch, 0.0);
-    packet.roll = readValid(mRoll, 0.0);
-    packet.verticalSpeed = readValid(mVerticalSpeed, 0.0) * 196.85;
-    
-    sockaddr_in destAddr;
-    memset(&destAddr, 0, sizeof(destAddr));
-    destAddr.sin_family = AF_INET;
-    destAddr.sin_port = htons(49000);
-    destAddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-    
-    sendto(mFlightDataSock, &packet, sizeof(packet), 0, 
-           (sockaddr*)&destAddr, sizeof(destAddr));
+    // This function is no longer called from background thread
+    // Flight data is now sent from flightLoopCallback to avoid threading violations
 }
 
 void LidarSightXP::stopFlightData()

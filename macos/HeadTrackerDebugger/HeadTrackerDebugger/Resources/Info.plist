@@ -7,7 +7,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>LiDARSight</string>
 	<key>CFBundleExecutable</key>
-	<string>LiDARSight</string>
+	<string>HeadTrackerDebugger</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.lidarsight.debugger</string>
 	<key>CFBundleInfoDictionaryVersion</key>

@@ -21,7 +21,6 @@ class HeadTrackerViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     @Published var settings: DebuggerSettings = .load()
-    
     private let udpListener = UDPListener()
     private let tcpListener = TCPListener()
     private let filter = OneEuroFilterVector3()
@@ -190,10 +189,14 @@ struct ContentView: View {
                 .frame(minHeight: 300)
                 
                 HStack {
+                    Spacer()
+                    
                     Button("Recenter") {
                         viewModel.recenter()
                     }
                     .buttonStyle(.bordered)
+                    
+                    Spacer()
                     
                     Button(viewModel.isConnected ? "Stop" : "Start") {
                         if viewModel.isConnected {
