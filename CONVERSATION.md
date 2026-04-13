@@ -99,7 +99,7 @@ Yaw (look left/right):   sim/aircraft/view/acf_poY (r/w) - degrees
 Roll (tilt head):        sim/aircraft/view/acf_poZ (r/w) - degrees
 Position (X):            sim/aircraft/view/acf_peX (r/w) - meters
 Position (Y):           sim/aircraft/view/acf_peY (r/w) - meters  
-Position (Z):            sim/aircraft/view/acf_peZ (r/w) - meters
+Position (Z):           sim/aircraft/view/acf_peZ (r/w) - meters
 ```
 
 ### Initial Values
@@ -126,7 +126,7 @@ LidarSightXP/
 │   ├── Transport/
 │   │   ├── TCPClient.swift
 │   │   └── PeerTalkClient.swift
-│   ├── Models/
+│   ├─��� Models/
 │   │   ├── HeadPose.swift
 │   │   ├── HeadPosePacket.swift
 │   │   └── CalibrationManager.swift
@@ -185,7 +185,7 @@ func normalizeAngle(_ angle: Float) -> Float {
 **Parameters:**
 - `minCutoff`: 1.0 Hz (default)
 - `beta`: 0.8 (default)  
-- `dCutoff`: 1.0 Hz
+- `dCutoff`: 1.0 Hz (default)
 
 **Formula:**
 ```
@@ -498,5 +498,37 @@ Added:
 
 ---
 
-*Conversation logged: April 4, 2026*
+## April 13, 2026 - Session 20: Blog Post Creation
+
+### Task
+User requested 5 blog articles about the project, focusing on iOS app and macOS debugger (not X-Plane plugin).
+
+### Action
+Created first blog post covering the overall project introduction.
+
+### Blog Post Created: `blog-lidar.md`
+- Title: "Building Professional Head Tracking for X-Plane 12: A Developer's Journey"
+- Added mermaid diagrams for architecture visualization
+- Covered:
+  - The problem (commercial head tracking expensive)
+  - Core insight: iPhone TrueDepth already does face tracking
+  - System architecture (iOS → Debugger → X-Plane)
+  - Data packet design (33 bytes)
+  - One Euro filter for smoothing
+  - Future post topics
+
+### Research Added: TrueDepth vs LiDAR
+After user request to add LiDAR research, added detailed comparison:
+- How TrueDepth works (dot projector + IR camera, 30k+ dots)
+- How LiDAR works (Time-of-Flight pulses)
+- Comparison table (range, frame rate, face mesh support)
+- Key insight: Any iPhone with Face ID works, not just Pro
+
+### File Structure
+- `blog/01-the-problem-and-our-solution.md` - original draft
+- `blog-lidar.md` - final with mermaid and research
+
+---
+
+*Conversation logged: April 13, 2026*
 *Author: Claude Code (opencode)*
