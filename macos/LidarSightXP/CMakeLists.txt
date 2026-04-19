@@ -47,4 +47,8 @@ set_target_properties(${PLUGIN_NAME} PROPERTIES
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dist/ DESTINATION .)
 
+# Also copy directly to X-Plane plugins folder
+set(XPLANE_PLUGINS_DIR "$ENV{HOME}/Library/Application Support/X-Plane 12/Resources/plugins/LidarSightXP/mac_x64")
+install(TARGETS ${PLUGIN_NAME} LIBRARY DESTINATION "${XPLANE_PLUGINS_DIR}")
+
 message(STATUS "LidarSightXP plugin configured")

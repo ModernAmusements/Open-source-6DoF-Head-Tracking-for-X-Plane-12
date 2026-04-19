@@ -576,7 +576,7 @@ After user request to add LiDAR research, added detailed comparison:
 - Head tracking: WORKING ✅
 - Yaw (left/right): WORKING ✅
 - Pitch (up/down): WORKING ✅  
-- Roll (tilt): FIXED - use plugin menu to toggle if needed
+- Roll (tilt): DISABLED by default, can enable via plugin menu
 - Auto-calibrate: WORKING ✅
 - Calibration feedback: WORKING ✅
 
