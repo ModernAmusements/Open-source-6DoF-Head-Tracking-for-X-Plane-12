@@ -1,0 +1,30 @@
+A primary flight display (PFD) is a modern aircraft instrument dedicated to flight information. Much like multi-function displays, primary flight displays are built around a liquid-crystal display or CRT display device. Representations of older six pack or "steam gauge" instruments are combined on one compact display, simplifying pilot workflow and streamlining cockpit layouts.
+
+Most airliners built since the 1980s—as well as many business jets and an increasing number of newer general aviation aircraft—have glass cockpits equipped with primary flight and multi-function displays (MFDs). Cirrus Aircraft was the first general aviation manufacturer to add a PFD to their already existing MFD, which they made standard on their SR-series aircraft in 2003.
+
+Mechanical gauges have not been eliminated from the cockpit with the onset of the PFD; they are retained for backup purposes in the event of total electrical failure.
+
+Components
+While the PFD does not directly use the pitot-static system to physically display flight data, it still uses the system to make altitude, airspeed, vertical speed, and other measurements precisely using air pressure and barometric readings. An air data computer analyzes the information and displays it to the pilot in a readable format. A number of manufacturers produce PFDs, varying slightly in appearance and functionality, but the information is displayed to the pilot in a similar fashion. FAA regulation describes that a PFD includes at a minimum, an airspeed indicator, turn coordinator, attitude indicator, heading indicator, altimeter, and vertical speed indicator [14 CFR Part 61.129(j)(1)].
+
+Layout
+
+PFD with key instrument displays labelled
+
+PFD of a Garmin G1000
+The details of the display layout on a primary flight display can vary enormously, depending on the aircraft, the aircraft's manufacturer, the specific model of PFD, certain settings chosen by the pilot, and various internal options that are selected by the aircraft's owner (i.e., an airline, in the case of a large airliner). However, the great majority of PFDs follow a similar layout convention.
+
+The center of the PFD usually contains an attitude indicator (AI), which gives the pilot information about the aircraft's pitch and roll characteristics, and the orientation of the aircraft with respect to the horizon. Unlike a traditional attitude indicator, however, the mechanical gyroscope is not contained within the panel itself, but is rather a separate device whose information is simply displayed on the PFD. The attitude indicator is designed to look very much like traditional mechanical AIs. Other information that may or may not appear on or about the attitude indicator can include the stall angle, a runway diagram, ILS localizer and glide-path “needles”, and so on. Unlike mechanical instruments, this information can be dynamically updated as required; the stall angle, for example, can be adjusted in real time to reflect the calculated critical angle of attack of the aircraft in its current configuration (airspeed, etc.). The PFD may also show an indicator of the aircraft's future path (over the next few seconds), as calculated by onboard computers, making it easier for pilots to anticipate aircraft movements and reactions.
+
+To the left and right of the attitude indicator are usually the airspeed and altitude indicators, respectively. The airspeed indicator displays the speed of the aircraft in knots, while the altitude indicator displays the aircraft's altitude above mean sea level (AMSL). These measurements are conducted through the aircraft's pitot system, which tracks air pressure measurements. As in the PFD's attitude indicator, these systems are merely displayed data from the underlying mechanical systems, and do not contain any mechanical parts (unlike an aircraft's airspeed indicator and altimeter). Both of these indicators are usually presented as vertical “tapes”, which scroll up and down as altitude and airspeed change. Both indicators may often have “bugs”, that is, indicators that show various important speeds and altitudes, such as V speeds calculated by a flight management system, do-not-exceed speeds for the current configuration, stall speeds, selected altitudes and airspeeds for the autopilot, and so on.
+
+The vertical speed indicator, usually next to the altitude indicator, indicates to the pilot how fast the aircraft is ascending or descending, or the rate at which the altitude changes. This is usually represented with numbers in "thousands of feet per minute." For example, a measurement of "+2" indicates an ascent of 2000 feet per minute, while a measurement of "-1.5" indicates a descent of 1500 feet per minute. There may also be a simulated needle showing the general direction and magnitude of vertical movement.
+
+At the bottom of the PFD is the heading display, which shows the pilot the magnetic heading of the aircraft. This functions much like a standard magnetic heading indicator, turning as required. Often this part of the display shows not only the current heading, but also the current track (actual path over the ground), rate of turn,[1] current heading setting on the autopilot, and other indicators.
+
+Other information displayed on the PFD includes navigational marker information, bugs (to control the autopilot), ILS glideslope indicators, course deviation indicators, altitude indicator QFE settings, and much more.
+
+Although the layout of a PFD can be very complex, once a pilot is accustomed to it the PFD can provide an enormous amount of information with a single glance.
+
+Airbus
+Starting with the A350-1000, Airbus proposes a common symbology on the PFD and HUD centered on a flightpath vector and an energy cue instead of a flight director, supplementing the usual pitch and heading indications to improve situational awareness, and helping incorporating synthetic vision into the PFD.[2]

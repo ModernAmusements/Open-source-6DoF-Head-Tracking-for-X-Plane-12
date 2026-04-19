@@ -99,8 +99,8 @@ struct TrackingConfig {
         roll.maxInput = 45.0f;
         roll.maxOutput = 60.0f;
         roll.curvePower = 1.0f;
-        roll.enabled = true;
-        roll.invert = true;
+        roll.enabled = false;
+        roll.invert = false;
     }
 };
 

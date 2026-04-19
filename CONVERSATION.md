@@ -530,5 +530,57 @@ After user request to add LiDAR research, added detailed comparison:
 
 ---
 
-*Conversation logged: April 13, 2026*
+## April 19, 2026 - Session: Bug Fixes & Calibration
+
+### Bugs Found and Fixed
+
+1. **Calibration Bug** - OUTPUT values always zero
+   - Root cause: Offset stored AFTER computing deltas (logic error)
+   - Fix: Store offset BEFORE computing movement, then compute offset from that point
+   
+2. **Auto-Calibrate on First Movement** 
+   - Added: Wait for head movement > deadzone before calibrating
+   - Added: 2-second feedback display
+   - Added: Calibration state enum (waiting/calibrating/calibrated)
+
+3. **iOS Settings - Unresponsive Sliders**
+   - Converted sliders to toggles for: Smoothing, Eye Tracking, Non-linear Curve
+   - Added: Tracking Mode picker (menu style)
+   - Changed defaults: smoothing=0.85, eyeTracking=false, nonlinear=0.7
+
+### X-Plane Plugin Fixes
+
+- Reset calibration on disconnect
+- Added OneEuroFilter.reset() method
+- Fixed applyCurve() formula alignment
+
+### April 19, 2026 - Session: Roll Inversion Fixes
+
+### Issue: Head Roll (Tilt) Inverted
+- User: "tilt head left → view tilts right" (wrong)
+
+### Fixes Applied
+1. iOS: Removed roll inversion (plugin now handles it)
+2. Plugin: Set default roll.invert = true (corrects direction)
+3. Plugin: Added Roll Settings menu with:
+   - Enable Roll / Disable Roll
+   - Invert Roll toggle
+
+### Files Modified
+- `ios/.../ContentView.swift` - settings UI
+- `ios/.../TransportManager.swift` - removed inversion
+- `macos/.../LidarSightXP.cpp` - roll settings menu
+- `macos/.../LidarSightXP.h` - default roll.invert = true
+
+### Current Status
+- Head tracking: WORKING ✅
+- Yaw (left/right): WORKING ✅
+- Pitch (up/down): WORKING ✅  
+- Roll (tilt): FIXED - use plugin menu to toggle if needed
+- Auto-calibrate: WORKING ✅
+- Calibration feedback: WORKING ✅
+
+---
+
+*Conversation logged: April 19, 2026*
 *Author: Claude Code (opencode)*
