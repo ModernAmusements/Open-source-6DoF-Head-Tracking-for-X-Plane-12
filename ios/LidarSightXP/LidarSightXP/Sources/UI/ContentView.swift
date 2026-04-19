@@ -315,13 +315,13 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     
     @State private var sensitivity: Double = 1.0
-    @State private var smoothing: Double = 0.85
+    @State private var smoothingEnabled: Bool = true
     @State private var stealthMode: Bool = true
     @State private var selectedMode: TrackingMode = .headOnly
     @State private var selectedProtocol: ProtocolMode = .openTrack
     @State private var maxAngle: Double = 45.0
-    @State private var rangeScale: Double = 0.7
-    @State private var eyeSensitivity: Double = 2.5
+    @State private var nonlinearCurve: Bool = true
+    @State private var eyeTrackingEnabled: Bool = false
     @State private var targetIP: String = ""
     
     var body: some View {
@@ -337,16 +337,10 @@ struct SettingsView: View {
                             .tag(mode)
                         }
                     }
-                    .pickerStyle(.segmented)
                     
                     Text(selectedMode.description)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
-                    Button("Save") {
-                        saveSettings()
-                    }
-                    .foregroundColor(.blue)
                 }
                 
                 Section("Parameters") {
@@ -366,21 +360,8 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Smoothing")
-                                .font(.subheadline)
-                            Spacer()
-                            Text(String(format: "%.1f", smoothing))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        Slider(value: $smoothing, in: 0.0...0.9, step: 0.1)
-                            .onChange(of: smoothing) { _ in saveSettings() }
-                        Text("Higher = smoother but more latency")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    Toggle("Smoothing", isOn: $smoothingEnabled)
+                        .onChange(of: smoothingEnabled) { _ in saveSettings() }
                     
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
@@ -398,39 +379,13 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Range Curve")
-                                .font(.subheadline)
-                            Spacer()
-                            Text(rangeScale == 0 ? "Linear" : String(format: "%.1f", rangeScale))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        Slider(value: $rangeScale, in: 0...1.0, step: 0.1)
-                            .onChange(of: rangeScale) { _ in saveSettings() }
-                        Text("Non-linear mapping - higher = less movement needed at edges")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    Toggle("Non-linear Curve", isOn: $nonlinearCurve)
+                        .onChange(of: nonlinearCurve) { _ in saveSettings() }
                 }
                 
                 Section("Eye Tracking") {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Eye Sensitivity")
-                                .font(.subheadline)
-                            Spacer()
-                            Text(String(format: "%.1fx", eyeSensitivity))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        Slider(value: $eyeSensitivity, in: 1.0...5.0, step: 0.5)
-                            .onChange(of: eyeSensitivity) { _ in saveSettings() }
-                        Text("Higher = more view movement from eye gaze")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    Toggle("Enable Eye Tracking", isOn: $eyeTrackingEnabled)
+                        .onChange(of: eyeTrackingEnabled) { _ in saveSettings() }
                 }
                 
                 Section("Connection") {
@@ -502,26 +457,26 @@ struct SettingsView: View {
     
     private func loadSettings() {
         sensitivity = Double(transportManager.settings.sensitivity)
-        smoothing = Double(transportManager.settings.smoothing)
+        smoothingEnabled = transportManager.settings.smoothing > 0
         stealthMode = transportManager.settings.stealthMode
         selectedMode = transportManager.settings.trackingMode
         selectedProtocol = transportManager.settings.protocolMode
         maxAngle = Double(transportManager.settings.maxAngle)
-        rangeScale = Double(transportManager.settings.rangeScale)
-        eyeSensitivity = Double(transportManager.settings.eyeSensitivity)
+        nonlinearCurve = transportManager.settings.rangeScale > 0
+        eyeTrackingEnabled = transportManager.settings.eyeSensitivity > 0
         targetIP = transportManager.settings.targetIP
     }
     
     private func saveSettings() {
         let settings = TrackingSettings(
             sensitivity: Float(sensitivity),
-            smoothing: Float(smoothing),
+            smoothing: smoothingEnabled ? 0.85 : 0.0,
             stealthMode: stealthMode,
             trackingMode: selectedMode,
             protocolMode: selectedProtocol,
             maxAngle: Float(maxAngle),
-            rangeScale: Float(rangeScale),
-            eyeSensitivity: Float(eyeSensitivity),
+            rangeScale: nonlinearCurve ? 0.7 : 0.0,
+            eyeSensitivity: eyeTrackingEnabled ? 2.5 : 0.0,
             targetIP: targetIP
         )
         transportManager.updateSettings(settings)

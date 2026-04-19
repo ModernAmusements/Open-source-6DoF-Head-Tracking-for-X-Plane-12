@@ -2,6 +2,12 @@ import SwiftUI
 import Combine
 import Foundation
 
+enum CalibrationState {
+    case waiting
+    case calibrating
+    case calibrated
+}
+
 class HeadTrackerViewModel: ObservableObject {
     @Published var rawPitch: Float = 0
     @Published var rawYaw: Float = 0
@@ -19,6 +25,7 @@ class HeadTrackerViewModel: ObservableObject {
     @Published var detectedProtocol: PacketProtocol = .lidarSight
     @Published var packetRate: Double = 0
     @Published var errorMessage: String?
+    @Published var calibrationState: CalibrationState = .waiting
     
     @Published var settings: DebuggerSettings = .load()
     private let udpListener = UDPListener()
@@ -45,7 +52,12 @@ class HeadTrackerViewModel: ObservableObject {
     private func setupListener() {
         udpListener.$isConnected
             .receive(on: DispatchQueue.main)
-            .assign(to: &$isConnected)
+            .sink { [weak self] connected in
+                if !connected {
+                    self?.handleDisconnection()
+                }
+            }
+            .store(in: &cancellables)
         
         udpListener.$detectedProtocol
             .receive(on: DispatchQueue.main)
@@ -76,6 +88,13 @@ class HeadTrackerViewModel: ObservableObject {
     
     func recenter() {
         hasInitialPose = false
+        calibrationState = .waiting
+        filter.reset()
+    }
+    
+    private func handleDisconnection() {
+        hasInitialPose = false
+        calibrationState = .waiting
         filter.reset()
     }
     
@@ -124,15 +143,35 @@ class HeadTrackerViewModel: ObservableObject {
             let offsetRoll = self.filteredRoll - self.poseOffset.roll
             
             if !self.hasInitialPose {
-                self.hasInitialPose = true
-                self.poseOffset.pitch = self.filteredPitch
-                self.poseOffset.yaw = self.filteredYaw
-                self.poseOffset.roll = self.filteredRoll
+                let movement = max(abs(offsetPitch), abs(offsetYaw), abs(offsetRoll))
+                let deadzone = Float(self.settings.tracking.yaw.deadzone)
+                
+                if movement > deadzone {
+                    self.poseOffset.pitch = self.filteredPitch
+                    self.poseOffset.yaw = self.filteredYaw
+                    self.poseOffset.roll = self.filteredRoll
+                    
+                    self.hasInitialPose = true
+                    self.calibrationState = .calibrating
+                    self.outputPitch = self.applyCurve(offsetPitch, config: self.settings.tracking.pitch)
+                    self.outputYaw = self.applyCurve(offsetYaw, config: self.settings.tracking.yaw)
+                    self.outputRoll = self.applyCurve(offsetRoll, config: self.settings.tracking.roll)
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        if self.calibrationState == .calibrating {
+                            self.calibrationState = .calibrated
+                        }
+                    }
+                } else {
+                    self.outputPitch = 0
+                    self.outputYaw = 0
+                    self.outputRoll = 0
+                }
+            } else {
+                self.outputPitch = self.applyCurve(offsetPitch, config: self.settings.tracking.pitch)
+                self.outputYaw = self.applyCurve(offsetYaw, config: self.settings.tracking.yaw)
+                self.outputRoll = self.applyCurve(offsetRoll, config: self.settings.tracking.roll)
             }
-            
-            self.outputPitch = self.applyCurve(offsetPitch, config: self.settings.tracking.pitch)
-            self.outputYaw = self.applyCurve(offsetYaw, config: self.settings.tracking.yaw)
-            self.outputRoll = self.applyCurve(offsetRoll, config: self.settings.tracking.roll)
         }
     }
     
@@ -186,6 +225,14 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                         Spacer()
                         Text("\(viewModel.settings.listenPort)")
+                    }
+                    
+                    HStack {
+                        Text("Calibration")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(calibrationStatusText)
+                            .foregroundColor(calibrationStatusColor)
                     }
                 }
                 
@@ -283,6 +330,22 @@ struct ContentView: View {
             )
             .frame(width: 400, height: 600)
             .interactiveDismissDisabled(false)
+        }
+    }
+    
+    private var calibrationStatusText: String {
+        switch viewModel.calibrationState {
+        case .waiting: return "Waiting..."
+        case .calibrating: return "Calibrating..."
+        case .calibrated: return "✓ Calibrated"
+        }
+    }
+    
+    private var calibrationStatusColor: Color {
+        switch viewModel.calibrationState {
+        case .waiting: return .secondary
+        case .calibrating: return .yellow
+        case .calibrated: return .green
         }
     }
 }

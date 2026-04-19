@@ -34,6 +34,13 @@ public:
         mDCutoff = dCutoff;
     }
     
+    void reset() {
+        mFirstTime = true;
+        mPrevValue = 0.0;
+        mPrevFiltered = 0.0;
+        mPrevDerivative = 0.0;
+    }
+    
     double filter(double value, double dt) {
         if (mFirstTime) {
             mFirstTime = false;
@@ -92,6 +99,12 @@ public:
         mFilterX.setParameters(minCutoff, beta, dCutoff);
         mFilterY.setParameters(minCutoff, beta, dCutoff);
         mFilterZ.setParameters(minCutoff, beta, dCutoff);
+    }
+    
+    void reset() {
+        mFilterX.reset();
+        mFilterY.reset();
+        mFilterZ.reset();
     }
     
     void filter(double& x, double& y, double& z, double dt) {

@@ -243,10 +243,19 @@ void LidarSightXP::applyOneEuroFilter()
     mFilteredPose.roll = static_cast<float>(roll);
     mFilteredPose.flags = pose.flags;
     
+    float offsetPitch = mFilteredPose.pitch - mPoseOffset.pitch;
+    float offsetYaw = mFilteredPose.yaw - mPoseOffset.yaw;
+    float offsetRoll = mFilteredPose.roll - mPoseOffset.roll;
+    
     if (!mHasInitialPose) {
-        mHasInitialPose = true;
-        mPoseOffset = mFilteredPose;
-        DEBUG_LOG("Auto-zeroed on first pose");
+        float movement = std::max(std::abs(offsetPitch), std::max(std::abs(offsetYaw), std::abs(offsetRoll)));
+        float deadzone = mConfig.yaw.deadzone;
+        
+        if (movement > deadzone) {
+            mPoseOffset = mFilteredPose;
+            mHasInitialPose = true;
+            DEBUG_LOG("Auto-calibrated on head movement");
+        }
     }
 }
 
@@ -256,6 +265,7 @@ void LidarSightXP::recenter()
     mPoseOffset.pitch = mFilteredPose.pitch;
     mPoseOffset.yaw = mFilteredPose.yaw;
     mPoseOffset.roll = mFilteredPose.roll;
+    mRotationFilter.reset();
     mRotationFilter.setParameters(mConfig.filterMinCutoff, mConfig.filterBeta, mConfig.filterDCutoff);
 }
 
@@ -281,9 +291,9 @@ float LidarSightXP::applyCurve(float value, const AxisConfig& config)
     float curvePower = config.curvePower;
     if (curvePower < 0.1f) curvePower = 0.1f;
     
-    float tPowered = (float)pow(t, 1.0 / curvePower);
+    float tPowered = (float)pow(t, curvePower);
     
-    float curved = config.maxOutput * tPowered;
+    float curved = config.deadzone + (config.maxOutput - config.deadzone) * tPowered;
     
     return sign * curved * (config.invert ? -1.0f : 1.0f);
 }
@@ -641,6 +651,8 @@ void LidarSightXP::startNetwork()
             
             close(clientSock);
             mIsConnected.store(false);
+            mHasInitialPose = false;
+            mPoseOffset = HeadPosePacket();
         }
         
         DEBUG_LOG("Network thread exiting");
