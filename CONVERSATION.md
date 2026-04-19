@@ -577,6 +577,8 @@ After user request to add LiDAR research, added detailed comparison:
 - Yaw (left/right): WORKING ✅
 - Pitch (up/down): WORKING ✅  
 - Roll (tilt): DISABLED by default, can enable via plugin menu
+- BUG FOUND: Plugin was not auto-copying to X-Plane folder
+- FIX: Added install target to CMakeLists.txt + manual copy to ~/Library/Application Support/X-Plane 12/Resources/plugins/
 - Auto-calibrate: WORKING ✅
 - Calibration feedback: WORKING ✅
 
