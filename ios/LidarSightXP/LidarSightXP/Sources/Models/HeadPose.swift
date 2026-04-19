@@ -102,6 +102,7 @@ struct TrackingSettings: Codable, Equatable {
     var rangeScale: Float
     var eyeSensitivity: Float
     var targetIP: String
+    var invertRoll: Bool
     
     init(sensitivity: Float = 1.0, 
          smoothing: Float = 0.85, 
@@ -111,7 +112,8 @@ struct TrackingSettings: Codable, Equatable {
          maxAngle: Float = 90.0,
          rangeScale: Float = 0.5,
          eyeSensitivity: Float = 1.0,
-         targetIP: String = "192.168.0.239") {
+         targetIP: String = "192.168.0.239",
+invertRoll: Bool = false) {
         self.sensitivity = sensitivity
         self.smoothing = smoothing
         self.stealthMode = stealthMode
@@ -121,6 +123,7 @@ struct TrackingSettings: Codable, Equatable {
         self.rangeScale = rangeScale
         self.eyeSensitivity = eyeSensitivity
         self.targetIP = targetIP
+        self.invertRoll = invertRoll
     }
     
     static let `default` = TrackingSettings()

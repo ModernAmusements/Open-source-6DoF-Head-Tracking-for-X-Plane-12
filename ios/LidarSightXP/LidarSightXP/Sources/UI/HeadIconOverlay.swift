@@ -55,6 +55,6 @@ struct HeadIconOverlay: View {
         let pitchPercent = CGFloat(max(-1.0, min(1.0, pitchValue)))
         
         offsetX = yawPercent * maxOffset
-        offsetY = -pitchPercent * maxOffset
+        offsetY = pitchPercent * maxOffset
     }
 }

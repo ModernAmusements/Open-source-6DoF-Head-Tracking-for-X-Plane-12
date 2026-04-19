@@ -185,16 +185,16 @@ void LidarSightXP::flightLoopCallback()
     offsetYaw = applyCurve(offsetYaw, mConfig.yaw);
     offsetRoll = applyCurve(offsetRoll, mConfig.roll);
     
-    XPLMSetDataf(mHeadPitch, -offsetPitch);
+    XPLMSetDataf(mHeadPitch, offsetPitch);
     XPLMSetDataf(mHeadYaw, offsetYaw);
-    XPLMSetDataf(mHeadRoll, offsetRoll);
+    XPLMSetDataf(mHeadRoll, mConfig.roll.invert ? -offsetRoll : offsetRoll);
     
     static int frameCount = 0;
     frameCount++;
     if (frameCount % 60 == 0) {
         char buf[128];
         snprintf(buf, sizeof(buf), "SET: pitch=%.1f yaw=%.1f roll=%.1f", 
-                 -offsetPitch, offsetYaw, offsetRoll);
+                 offsetPitch, offsetYaw, offsetRoll);
         DEBUG_LOG(buf);
     }
 }
@@ -431,6 +431,10 @@ void LidarSightXP::registerCommands()
     XPLMAppendMenuItem(pitchMenu, "Pitch: Increase Deadzone (Shift+=)", (void*)22, 0);
     XPLMAppendMenuItem(pitchMenu, "Pitch: Decrease Deadzone (Shift+-)", (void*)23, 0);
     
+    XPLMMenuID rollMenu = XPLMCreateMenu("Roll Settings", mMenu, 0, menuHandler, this);
+    XPLMAppendMenuItem(rollMenu, mConfig.roll.enabled ? "Disable Roll" : "Enable Roll", (void*)24, 0);
+    XPLMAppendMenuItem(rollMenu, mConfig.roll.invert ? "Un-Invert Roll" : "Invert Roll", (void*)25, 0);
+    
     XPLMMenuID filterMenu = XPLMCreateMenu("Filter Settings", mMenu, 0, menuHandler, this);
     XPLMAppendMenuItem(filterMenu, "Smoother (]", (void*)30, 0);
     XPLMAppendMenuItem(filterMenu, "More Responsive ([)", (void*)31, 0);
@@ -473,6 +477,10 @@ void LidarSightXP::menuHandler(void* inMenuRef, void* inItemRef)
         plugin->mConfig.pitch.deadzone = std::min(plugin->mConfig.pitch.deadzone + 1.0f, 15.0f);
     } else if (item == 23) {
         plugin->mConfig.pitch.deadzone = std::max(plugin->mConfig.pitch.deadzone - 1.0f, 0.0f);
+    } else if (item == 25) {
+        plugin->mConfig.roll.invert = !plugin->mConfig.roll.invert;
+    } else if (item == 24) {
+        plugin->mConfig.roll.enabled = !plugin->mConfig.roll.enabled;
     } else if (item == 30) {
         plugin->mConfig.filterMinCutoff = std::max(plugin->mConfig.filterMinCutoff - 0.2f, 0.1f);
         plugin->mRotationFilter.setParameters(plugin->mConfig.filterMinCutoff, plugin->mConfig.filterBeta, plugin->mConfig.filterDCutoff);

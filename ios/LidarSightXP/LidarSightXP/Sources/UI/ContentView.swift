@@ -323,6 +323,7 @@ struct SettingsView: View {
     @State private var nonlinearCurve: Bool = true
     @State private var eyeTrackingEnabled: Bool = false
     @State private var targetIP: String = ""
+    @State private var invertRoll: Bool = true
     
     var body: some View {
         NavigationView {
@@ -386,6 +387,14 @@ struct SettingsView: View {
                 Section("Eye Tracking") {
                     Toggle("Enable Eye Tracking", isOn: $eyeTrackingEnabled)
                         .onChange(of: eyeTrackingEnabled) { _ in saveSettings() }
+                }
+                
+                Section("Roll Inversion") {
+                    Toggle("Invert Roll", isOn: $invertRoll)
+                        .onChange(of: invertRoll) { _ in saveSettings() }
+                    Text("Use if tilting left shows view tilting right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 
                 Section("Connection") {
@@ -465,6 +474,7 @@ struct SettingsView: View {
         nonlinearCurve = transportManager.settings.rangeScale > 0
         eyeTrackingEnabled = transportManager.settings.eyeSensitivity > 0
         targetIP = transportManager.settings.targetIP
+        invertRoll = transportManager.settings.invertRoll
     }
     
     private func saveSettings() {
@@ -477,7 +487,8 @@ struct SettingsView: View {
             maxAngle: Float(maxAngle),
             rangeScale: nonlinearCurve ? 0.7 : 0.0,
             eyeSensitivity: eyeTrackingEnabled ? 2.5 : 0.0,
-            targetIP: targetIP
+            targetIP: targetIP,
+            invertRoll: invertRoll
         )
         transportManager.updateSettings(settings)
         trackingManager.trackingMode = selectedMode
